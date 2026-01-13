@@ -100,3 +100,64 @@ ngrok http --domain=YOUR-STATIC-DOMAIN.ngrok-free.app 3000
 * Thay vào đó, phải dùng URL của Ngrok (`https://...ngrok-free.app/api/webhooks`).
 
 ---
+# 🚀 Giai đoạn 2 - Backend Core & AI Integration
+
+**Thời gian thực hiện:** 13/01/2026  
+**Trạng thái:** ✅ Đã hoàn thành  
+**Mục tiêu:** Xây dựng kiến trúc Backend vững chắc, tích hợp Gemini AI và kết nối Database an toàn.
+
+---
+
+## 🛠 1. Kiến trúc hệ thống (System Architecture)
+
+Thay vì sử dụng mô hình MVC truyền thống (thường thấy ở Express/Laravel), dự án chuyển sang kiến trúc **Modular Architecture** tối ưu cho **Next.js App Router**:
+
+| Layer | Vị trí | Trách nhiệm | Ghi chú |
+| :--- | :--- | :--- | :--- |
+| **Presentation** | `src/app/**/page.tsx` | Giao diện UI (React Server Components) | Chỉ hiển thị dữ liệu |
+| **Controller** | `src/app/api/**/route.ts` | Xử lý Request/Response, Check Auth | Điều phối luồng dữ liệu |
+| **Service** | `src/lib/ai/*.ts` | Logic nghiệp vụ phức tạp (AI, 3rd Party) | Độc lập với Framework |
+| **Data Access** | `src/lib/db/*.ts` | Tương tác trực tiếp với Database | Repository Pattern |
+
+---
+
+## 💡 2. Các kỹ thuật đã triển khai (Key Implementations)
+
+### 🔌 Database Singleton Pattern
+**Vấn đề:** Trong môi trường Dev, tính năng Hot Reload của Next.js khiến kết nối Database bị khởi tạo lại liên tục, dẫn đến lỗi `Too many connections`.  
+**Giải pháp:** Sử dụng biến `globalThis` để lưu trữ instance kết nối, đảm bảo chỉ có **duy nhất 1 kết nối** tồn tại.
+
+### 🧠 Gemini Service & Retry Strategy
+
+**Vấn đề:** Model AI (bản Free/Preview) thường xuyên trả về lỗi `503 Overloaded`.
+
+**Giải pháp:**.
+* Cài đặt thuật toán **Exponential Backoff** (Thử lại với thời gian chờ tăng dần: 2s -> 4s -> 6s) để tăng tỷ lệ thành công.
+
+### ✍️ Prompt Engineering: Builder Pattern
+
+Sử dụng Class `PromptBuilder` để xây dựng prompt theo chuẩn **CO-STAR** (Context, Objective, Style, Tone, Audience, Response), giúp code clean và dễ bảo trì hơn cộng chuỗi thủ công.
+
+### 🛡️ Secure Server-side Auth
+
+Tuyệt đối không gửi `userId` từ Client. Sử dụng hàm `auth()` của Clerk ngay tại Server để lấy định danh người dùng, ngăn chặn lỗ hổng giả mạo (Impersonation).
+
+---
+
+## ⚠️ 3. Troubleshooting & Bài học (Lưu ý quan trọng)
+
+Trong quá trình phát triển Phase 2, đã gặp và xử lý triệt để các vấn đề sau:
+
+### ❌ Lỗi `Invalid URL` (Axios on Server)
+
+* **Hiện tượng:** Gọi `axios.post('/api/save-output')` từ `route.ts` bị lỗi.
+* **Bài học:** Server Node.js không hiểu đường dẫn tương đối (relative path).
+* **Fix:** Không gọi API vòng vo. Import trực tiếp hàm xử lý DB (`saveOutput` từ `lib/db/queries.ts`) để gọi hàm. Vừa nhanh hơn, vừa không lỗi mạng.
+
+### ❌ Lỗi Database Constraints (Foreign Key)
+
+* **Hiện tượng:** Lỗi `Key (user_id) is not present in table "user_profiles"`.
+* **Nguyên nhân:** User đăng ký bên Clerk nhưng chưa được đồng bộ (Webhook) về bảng `user_profiles` dưới Local DB.
+* **Fix (MVP):** Tạm thời gỡ bỏ ràng buộc khóa ngoại (`Foreign Key`) ở bảng `ai_outputs` để ưu tiên phát triển tính năng AI trước.
+
+---
