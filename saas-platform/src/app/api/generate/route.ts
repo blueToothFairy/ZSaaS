@@ -3,7 +3,6 @@ import { singletonGeminiService } from "@/lib/ai";
 import { NextResponse } from "next/server";
 import { saveOutput } from "@/lib/db/queries";
 import { auth } from "@clerk/nextjs/server";
-import axios from "axios";
 
 export async function POST(request: Request) {
   const { userId } = await auth();

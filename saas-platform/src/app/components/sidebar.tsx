@@ -12,13 +12,14 @@ import {
   FileSearch,
   Zap,
   Settings,
-  Sparkles
+  Sparkles,
+  Music
 } from "lucide-react";
 
 const routes = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", color: "text-sky-400" },
   { label: "Article Generator", icon: FileText, href: "/dashboard/article-generator", color: "text-violet-400" },
-  { label: "Blog Title Generator", icon: Type, href: "/dashboard/blog-titles", color: "text-pink-400" },
+  { label: "Vibe Tuner", icon: Music, href: "/dashboard/vibe-tuner", color: "text-pink-400" },
   { label: "Image Generator", icon: ImageIcon, href: "/dashboard/image-generator", color: "text-orange-400" },
   { label: "Background Remover", icon: Eraser, href: "/dashboard/background-remover", color: "text-emerald-400" },
   { label: "Object Remover", icon: Scissors, href: "/dashboard/object-remover", color: "text-red-400" },

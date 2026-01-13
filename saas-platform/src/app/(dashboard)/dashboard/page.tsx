@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, FileText, Image as ImageIcon, Type, Eraser, Scissors, FileSearch } from "lucide-react";
+import { ArrowRight, FileText, Image as ImageIcon, Type, Eraser, Scissors, FileSearch, Music } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const tools = [
@@ -9,7 +9,7 @@ const tools = [
   { label: "Image Generator", icon: ImageIcon, href: "/dashboard/image-generator", color: "text-orange-400", bg: "group-hover:bg-orange-500/20 bg-slate-800/50", border: "group-hover:border-orange-500/50", shadow: "group-hover:shadow-orange-500/20", desc: "Turn your ideas into stunning artwork." },
   { label: "Resume Analyzer", icon: FileSearch, href: "/dashboard/resume-analyzer", color: "text-yellow-400", bg: "group-hover:bg-yellow-500/20 bg-slate-800/50", border: "group-hover:border-yellow-500/50", shadow: "group-hover:shadow-yellow-500/20", desc: "Optimize your professional resume." },
   { label: "Background Remover", icon: Eraser, href: "/dashboard/background-remover", color: "text-emerald-400", bg: "group-hover:bg-emerald-500/20 bg-slate-800/50", border: "group-hover:border-emerald-500/50", shadow: "group-hover:shadow-emerald-500/20", desc: "Remove backgrounds with high precision." },
-  { label: "Blog Title Generator", icon: Type, href: "/dashboard/blog-titles", color: "text-pink-400", bg: "group-hover:bg-pink-500/20 bg-slate-800/50", border: "group-hover:border-pink-500/50", shadow: "group-hover:shadow-pink-500/20", desc: "Generate catchy headlines for your posts." },
+  { label: "Vibe Tuner", icon: Music, href: "/dashboard/vibe-tuner", color: "text-pink-400", bg: "group-hover:bg-pink-500/20 bg-slate-800/50", border: "group-hover:border-pink-500/50", shadow: "group-hover:shadow-pink-500/20", desc: "Get music matching your photo's vibe." },
   { label: "Object Remover", icon: Scissors, href: "/dashboard/object-remover", color: "text-red-400", bg: "group-hover:bg-red-500/20 bg-slate-800/50", border: "group-hover:border-red-500/50", shadow: "group-hover:shadow-red-500/20", desc: "Remove unwanted objects from photos." },
 ];
 
