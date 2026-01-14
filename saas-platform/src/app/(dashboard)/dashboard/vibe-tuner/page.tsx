@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { Music, UploadCloud, Loader2, Sparkles, Play, Image as ImageIcon, X, Disc } from "lucide-react";
 import axios from "axios";
 import imageCompression from "browser-image-compression";
 import { fileToBase64 } from "@/lib/utils/file-to-base64";
+import { SongCard } from "@/app/components/song-card";
 
 // Định nghĩa kiểu dữ liệu cho bài hát
 interface Song {
@@ -16,13 +18,13 @@ interface Song {
 
 export default function ImageToPlaylistPage() {
     const [isLoading, setIsLoading] = useState(false);
-    
+
     // 1. THÊM STATE ĐỂ LƯU FILE THẬT
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    
+
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [songs, setSongs] = useState<Song[]>([]);
-    
+
     // Ref chỉ dùng để reset giá trị input UI, không dùng lấy data
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,7 +51,7 @@ export default function ImageToPlaylistPage() {
         setImagePreview(null);
         setSelectedFile(null);
         setSongs([]);
-        
+
         // Dùng ref để clear giá trị trong input HTML (để chọn lại được cùng 1 file)
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
@@ -72,21 +74,18 @@ export default function ImageToPlaylistPage() {
             // 5. DÙNG BIẾN STATE ĐỂ XỬ LÝ
             console.log("Starting compression for:", selectedFile.name);
             const compressedFile = await imageCompression(selectedFile, options);
-            
+
             console.log("Converting to Base64...");
             const base64ImageFile = await fileToBase64(compressedFile);
-            
+
             console.log("Sending to API...");
             // Lưu ý: Đảm bảo bạn đã có file route.ts tại /api/match-music hoặc sửa lại đường dẫn đúng
             const response = await axios.post('/api/match-music', {
                 base64ImageFile
             });
-            
-            console.log("Success:", response.data);
-            if (response.data.songs) {
-                setSongs(response.data.songs);
-            }
-            
+
+            const vibeData = response.data.result.slice(0, 50);
+            setSongs(vibeData);
         } catch (error) {
             console.error("Error generating playlist:", error);
             alert("Có lỗi xảy ra khi tạo playlist. Vui lòng thử lại.");
@@ -161,7 +160,7 @@ export default function ImageToPlaylistPage() {
                     {/* Action Button - Disabled logic updated based on selectedFile */}
                     <button
                         onClick={handleGenerate}
-                        disabled={isLoading || !selectedFile} 
+                        disabled={isLoading || !selectedFile}
                         className="relative overflow-hidden px-10 py-5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-lg rounded-2xl transition-all shadow-xl shadow-pink-900/30 hover:shadow-pink-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center gap-4 group/btn w-full max-w-md justify-center"
                     >
                         <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-1000 ease-in-out"></div>
@@ -192,31 +191,7 @@ export default function ImageToPlaylistPage() {
 
                 <div className="grid gap-3">
                     {songs.map((song, index) => (
-                        <div
-                            key={song.id}
-                            className="group flex items-center p-3 pr-5 bg-[#131722]/60 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-pink-500/30 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden backdrop-blur-md"
-                            style={{ animationDelay: `${index * 150}ms` }}
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-
-                            <div className="relative w-16 h-16 rounded-xl overflow-hidden mr-5 border border-white/10 flex-shrink-0 bg-slate-800 shadow-lg group-hover:shadow-pink-500/20 transition-shadow">
-                                <img src={song.coverUrl} alt={song.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                                    <Play className="w-8 h-8 text-white fill-white/80" />
-                                </div>
-                            </div>
-
-                            <div className="flex-1 min-w-0 relative z-10 flex flex-col justify-center h-full">
-                                <h3 className="text-lg font-semibold text-slate-200 group-hover:text-white truncate transition-colors">{song.title}</h3>
-                                <p className="text-sm text-slate-400 truncate group-hover:text-pink-300/80 transition-colors">{song.artist}</p>
-                            </div>
-
-                            <div className="ml-4 relative z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                <button className="p-3 rounded-full bg-pink-500/20 text-pink-400 hover:text-white hover:bg-pink-500 transition-all shadow-lg shadow-pink-500/10">
-                                    <Play className="w-5 h-5 fill-current" />
-                                </button>
-                            </div>
-                        </div>
+                        <SongCard key={song.trackId} song={song} index={index} />
                     ))}
                 </div>
 
@@ -226,7 +201,6 @@ export default function ImageToPlaylistPage() {
                             <Music className="w-10 h-10 text-slate-600" />
                         </div>
                         <p className="text-slate-400 text-lg font-medium">Upload an image to get started.</p>
-                        <p className="text-slate-600 text-sm mt-2">Your playlist will appear here.</p>
                     </div>
                 )}
             </div>

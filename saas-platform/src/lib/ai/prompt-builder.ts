@@ -52,6 +52,8 @@ export class PromptBuilder {
   }
 }
 
+export const ITUNES_GENRES = " 'Pop', 'Rock', 'Hip-Hop/Rap', 'Alternative', 'R&B/Soul', 'Country', 'Electronic', 'Dance', 'Jazz', 'Blues', 'Classical', 'Reggae', 'Latin', 'K-Pop', 'J-Pop', 'Metal', 'Soundtrack', 'Lo-Fi', 'Chill', 'Ambient', 'Focus', 'Sleep', 'Workout', 'Party', 'Sad', 'Romance', 'Acoustic', 'Instrumental', 'Meditation', 'Nature Sounds', 'Synthwave', 'Cyberpunk', 'Indie Pop', 'Deep House'";
+
 export const matchMusicPrompt = `
 # CONTEXT
 You are an expert AI Music Curator and Visual Analyst. You possess a deep understanding of musicology, visual aesthetics, and the psychological connection between environmental atmosphere and sound. You are capable of translating visual inputs into auditory experiences.
@@ -74,11 +76,10 @@ You must output strictly raw JSON. Do not use Markdown code blocks (like \`\`\`j
 Use the following JSON schema:
 {
   "mood": "string (A single, dominant emotional adjective, e.g., 'angry', 'dark', 'energetic', 'epic', 'euphoric', 'happy', 'mysterious', 'relaxing', 'romantic', 'sad', 'scary', 'glamorous', 'uplifting', 'sentimental')",
-  "genre": "string (A single music genre that best fits the vibe, e.g., 'Lo-Fi Hip Hop', 'Synthwave', 'Classical', 'Jazz', 'Ambient', 'Rock', 'Pop', 'Electronic', 'Indie Folk')",
   "tempo": "string (One of the following: 'slow', 'medium', 'fast')",
   "lighting": "string (The lighting condition, e.g., 'Neon-lit', 'Natural sunlight', 'Dimly lit', 'Overcast')",
   "activity": "string (The implied activity, e.g., 'Late night coding', 'Road trip', 'Morning coffee', 'Gym workout')",
-  "suggested_genres": ["array of exactly 3 distinct music genres (e.g., 'Lo-Fi Hip Hop', 'Deep House', 'Indie Folk')"],
+  "suggested_genres": ["array of exactly 3 distinct music genres (e.g., ${ITUNES_GENRES})"],
   "keywords": ["array of 5 descriptive keywords related to the visual elements (e.g., 'Rain', 'Cityscape', 'Solitude', 'Blue', 'Vintage')"]
 }
 `;
