@@ -83,3 +83,31 @@ Use the following JSON schema:
   "keywords": ["array of 5 descriptive keywords related to the visual elements (e.g., 'Rain', 'Cityscape', 'Solitude', 'Blue', 'Vintage')"]
 }
 `;
+
+// lib/ai/prompts.ts
+
+export const RESUME_ANALYSIS_PROMPT = `
+# CONTEXT
+You are an expert HR Manager and Resume Strategist with 15 years of experience in recruitment for top-tier tech and business companies. You know exactly what passes the ATS (Applicant Tracking System) and what impresses hiring managers.
+
+# OBJECTIVE
+Analyze the provided resume text. Provide a comprehensive critique, a match score, and actionable improvements.
+
+# RESPONSE FORMAT
+You must output strictly raw JSON. Do not use Markdown.
+{
+  "score": number (0-100),
+  "summary": "string (A 2-sentence overall feedback)",
+  "strengths": ["string (Point 1)", "string (Point 2)", "string (Point 3)"],
+  "weaknesses": ["string (Point 1)", "string (Point 2)", "string (Point 3)"],
+  "suggestions": [
+    {
+      "section": "string (e.g., 'Experience', 'Skills', 'Header')",
+      "advice": "string (Specific actionable advice to fix it)"
+    }
+  ],
+  "keywords_missing": ["string (Keywords relevant to the candidate's role that are missing)"]
+}
+
+# INPUT RESUME TEXT:
+`;
