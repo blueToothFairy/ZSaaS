@@ -164,3 +164,111 @@ Trong quá trình phát triển Phase 2, đã gặp và xử lý triệt để c
 * **Fix (MVP):** Tạm thời gỡ bỏ ràng buộc khóa ngoại (`Foreign Key`) ở bảng `ai_outputs` để ưu tiên phát triển tính năng AI trước.
 
 ---
+Chúc mừng bạn đã hoàn thành **Giai đoạn 3**! Đây là giai đoạn cực kỳ quan trọng vì nó không chỉ đụng đến logic AI phức tạp (xử lý đa phương tiện) mà còn giải quyết được các bài toán hạ tầng mạng "hóc búa" (IPv4/IPv6, Connection Pooling).
+
+Dưới đây là nội dung file `README.md` được tổng hợp chi tiết, chuyên nghiệp và đúng format để bạn cập nhật vào dự án.
+
+---
+
+# 🚀 Giai đoạn 3: AI Media Processing & Interactive Features (Xử lý Đa phương tiện & Tương tác)
+
+**Trạng thái:** ✅ Hoàn thành
+
+**Thời gian:** 19/1/2026
+
+**Công nghệ:** Next.js, Gemini 1.5 Flash (Vision), Supabase Connection Pooling.
+
+## 📝 Tổng quan
+
+Giai đoạn 3 đánh dấu bước chuyển mình từ xử lý văn bản thuần túy sang xử lý đa phương tiện (Hình ảnh). Trọng tâm là xây dựng các trải nghiệm người dùng mang tính tương tác cao (Interactive UI) và tối ưu hóa hiệu năng khi làm việc với dữ liệu lớn (ảnh Base64). Ngoài ra, giai đoạn này cũng giải quyết triệt để vấn đề tương thích mạng (IPv4/IPv6) khi kết nối Database từ môi trường Serverless.
+
+## ✨ Tính năng đã hoàn thành
+
+### 1. 🎵 Vibe-based Music Recommender (Gợi ý nhạc theo ảnh)
+
+* **Input:** Người dùng upload ảnh (Selfie, phong cảnh...).
+* **Processing:**
+* Sử dụng **Gemini 1.5 Flash (Vision)** để phân tích cảm xúc, bối cảnh, màu sắc.
+* Trích xuất `Genre` (Thể loại) và `Keywords` (Từ khóa: Rain, Chill, Night...).
+
+
+* **Output:** Danh sách bài hát (có link nghe thử 30s) từ **iTunes Search API** phù hợp với "vibe" của ảnh.
+* **UI:** Giao diện Glassmorphism, tích hợp trình phát nhạc Mini Player với hiệu ứng sóng nhạc (Visualizer).
+
+---
+
+### 2. 📄 AI Resume Analyzer (Chuyên gia Phân tích CV)
+
+Hệ thống đóng vai trò như một HR Manager chuyên nghiệp, giúp người dùng tối ưu hóa hồ sơ xin việc trước khi gửi đi.
+
+* **Input:** File CV định dạng PDF (Text-based).
+* **Processing:**
+* **Server-side Parsing:** Sử dụng thư viện `pdf-parse` (v2) tại API Route để trích xuất văn bản thô từ file PDF buffer một cách an toàn, tránh lỗi thiếu thư viện `fs` ở phía Client.
+* **Contextual Analysis:** Gửi văn bản đã trích xuất kèm Prompt chuyên sâu (theo khung CO-STAR) tới **Gemini 2.5 Flash**.
+* **JSON Enforcement:** Ép mô hình trả về kết quả dưới dạng JSON thuần túy để dễ dàng render lên giao diện.
+
+
+* **Output:**
+* **Match Score:** Chấm điểm độ mạnh của hồ sơ trên thang 100.
+* **SWOT Analysis:** Phân tích điểm mạnh, điểm yếu.
+* **Actionable Advice:** Gợi ý sửa đổi cụ thể cho từng mục (Kinh nghiệm, Kỹ năng, v.v.).
+
+
+
+---
+
+## 🛠️ Giải pháp Kỹ thuật & Thuật toán (Technical Highlights)
+
+### 🌊 1. Thuật toán "Waterfall Search" (Tìm kiếm Thác nước)
+
+Để giải quyết vấn đề iTunes API không hỗ trợ tìm kiếm theo ngữ nghĩa (Semantic Search), hệ thống sử dụng chiến thuật "Chia để trị":
+
+1. **Level 1 (Strict):** Tìm kiếm kết hợp `Genre + 3 Keywords` (Độ chính xác cao nhất).
+2. **Level 2 (Medium):** Nếu thiếu kết quả, giảm xuống `Genre + 2 Keywords`.
+3. **Level 3 (Fallback):** Cuối cùng tìm theo `Genre` để đảm bảo luôn có dữ liệu trả về.
+4. **Parallel Execution:** Sử dụng `Promise.all` để chạy song song các query, giảm thời gian chờ xuống mức thấp nhất.
+
+### 🔌 2. Supabase Connection Pooling (Khắc phục lỗi IPv4)
+
+Do môi trường mạng local và một số Docker container không hỗ trợ tốt IPv6, dẫn đến lỗi kết nối `ENOTFOUND` với Supabase Direct Connection (Port 5432).
+
+* **Giải pháp:** Chuyển sang sử dụng **Transaction Pooler** (Port `6543`) hoặc Session Pooler.
+* **Lợi ích:**
+* Hỗ trợ mạng **IPv4**.
+* Quản lý hàng đợi kết nối hiệu quả cho kiến trúc Serverless (Next.js), tránh lỗi `Too many connections`.
+
+
+
+### 📉 3. Client-side Optimization
+
+* **Image Compression:** Sử dụng `browser-image-compression` để nén ảnh xuống dưới 1MB trước khi gửi lên Server, giúp tiết kiệm băng thông và tăng tốc độ phân tích của AI.
+
+---
+
+## ⚠️ 3. Troubleshooting & Bài học (Lưu ý quan trọng)
+
+Những lỗi kỹ thuật "xương máu" đã gặp và cách khắc phục trong giai đoạn này:
+
+### ❌ Lỗi `getaddrinfo ENOTFOUND` (Database Connection)
+
+* **Hiện tượng:** Server báo lỗi không tìm thấy host Supabase dù tên miền đúng.
+* **Nguyên nhân:** Node.js (v17+) ưu tiên phân giải DNS qua IPv6, nhưng mạng local/WSL đôi khi chỉ hỗ trợ IPv4.
+* **Fix:**
+1. Dùng `cross-env` thêm cờ: `NODE_OPTIONS='--dns-result-order=ipv4first'`.
+2. Đổi port kết nối trong `.env` sang **6543** (Pooler Mode).
+
+
+
+### ❌ Lỗi hiển thị ảnh (`Blob URL`)
+
+* **Hiện tượng:** Component `<Image />` của Next.js báo lỗi thiếu `width/height` khi hiển thị ảnh preview (`blob:...`).
+* **Nguyên nhân:** Next.js Image Optimization cần kích thước tĩnh, trong khi Blob URL là động.
+* **Fix:** Sử dụng thẻ `<img>` tiêu chuẩn của HTML cho các ảnh preview local để linh hoạt và nhẹ hơn.
+
+### ❌ Lỗi `Module not found: Can't resolve 'fs'` (PDF Parsing)
+
+* **Hiện tượng:** App báo lỗi khi import `pdf-parse` trực tiếp vào Page (Client Component).
+* **Nguyên nhân:** Thư viện này phụ thuộc vào module hệ thống `fs` của Node.js, vốn không tồn tại trên trình duyệt.
+* **Fix:** Chuyển toàn bộ logic đọc file vào API Route (`app/api/analyze-cv/route.ts`). Client chỉ gửi `FormData` chứa file về Server.
+
+---

@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         try {
             await saveOutput({
                 user_id: userId,
-                feature_type: "macth_music",
+                feature_type: "match_music",
                 input_params: { prompt, base64ImageFile },
                 output_data: { parsedResponse },
             });

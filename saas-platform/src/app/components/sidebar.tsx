@@ -20,9 +20,9 @@ const routes = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", color: "text-sky-400" },
   { label: "Article Generator", icon: FileText, href: "/dashboard/article-generator", color: "text-violet-400" },
   { label: "Vibe Tuner", icon: Music, href: "/dashboard/vibe-tuner", color: "text-pink-400" },
-  { label: "Image Generator", icon: ImageIcon, href: "/dashboard/image-generator", color: "text-orange-400" },
-  { label: "Background Remover", icon: Eraser, href: "/dashboard/background-remover", color: "text-emerald-400" },
-  { label: "Object Remover", icon: Scissors, href: "/dashboard/object-remover", color: "text-red-400" },
+  // { label: "Image Generator", icon: ImageIcon, href: "/dashboard/image-generator", color: "text-orange-400" },
+  // { label: "Background Remover", icon: Eraser, href: "/dashboard/background-remover", color: "text-emerald-400" },
+  // { label: "Object Remover", icon: Scissors, href: "/dashboard/object-remover", color: "text-red-400" },
   { label: "Resume Analyzer", icon: FileSearch, href: "/dashboard/resume-analyzer", color: "text-yellow-400" },
   { label: "Settings", icon: Settings, href: "/dashboard/settings", color: "text-slate-400" },
 ];

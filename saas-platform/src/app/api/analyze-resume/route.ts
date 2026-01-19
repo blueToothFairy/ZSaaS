@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     try {
       await saveOutput({
         user_id: userId,
-        feature_type: "resume_analysis",
+        feature_type: "resume_analyze",
         input_params: { prompt, resumeText },
         output_data: { aiResponse },
       });

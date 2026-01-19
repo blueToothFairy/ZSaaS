@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 
 const tools = [
   { label: "Article Generator", icon: FileText, href: "/dashboard/article-generator", color: "text-violet-400", bg: "group-hover:bg-violet-500/20 bg-slate-800/50", border: "group-hover:border-violet-500/50", shadow: "group-hover:shadow-violet-500/20", desc: "Create SEO-optimized content in seconds." },
-  { label: "Image Generator", icon: ImageIcon, href: "/dashboard/image-generator", color: "text-orange-400", bg: "group-hover:bg-orange-500/20 bg-slate-800/50", border: "group-hover:border-orange-500/50", shadow: "group-hover:shadow-orange-500/20", desc: "Turn your ideas into stunning artwork." },
+  // { label: "Image Generator", icon: ImageIcon, href: "/dashboard/image-generator", color: "text-orange-400", bg: "group-hover:bg-orange-500/20 bg-slate-800/50", border: "group-hover:border-orange-500/50", shadow: "group-hover:shadow-orange-500/20", desc: "Turn your ideas into stunning artwork." },
   { label: "Resume Analyzer", icon: FileSearch, href: "/dashboard/resume-analyzer", color: "text-yellow-400", bg: "group-hover:bg-yellow-500/20 bg-slate-800/50", border: "group-hover:border-yellow-500/50", shadow: "group-hover:shadow-yellow-500/20", desc: "Optimize your professional resume." },
-  { label: "Background Remover", icon: Eraser, href: "/dashboard/background-remover", color: "text-emerald-400", bg: "group-hover:bg-emerald-500/20 bg-slate-800/50", border: "group-hover:border-emerald-500/50", shadow: "group-hover:shadow-emerald-500/20", desc: "Remove backgrounds with high precision." },
+  // { label: "Background Remover", icon: Eraser, href: "/dashboard/background-remover", color: "text-emerald-400", bg: "group-hover:bg-emerald-500/20 bg-slate-800/50", border: "group-hover:border-emerald-500/50", shadow: "group-hover:shadow-emerald-500/20", desc: "Remove backgrounds with high precision." },
   { label: "Vibe Tuner", icon: Music, href: "/dashboard/vibe-tuner", color: "text-pink-400", bg: "group-hover:bg-pink-500/20 bg-slate-800/50", border: "group-hover:border-pink-500/50", shadow: "group-hover:shadow-pink-500/20", desc: "Get music matching your photo's vibe." },
-  { label: "Object Remover", icon: Scissors, href: "/dashboard/object-remover", color: "text-red-400", bg: "group-hover:bg-red-500/20 bg-slate-800/50", border: "group-hover:border-red-500/50", shadow: "group-hover:shadow-red-500/20", desc: "Remove unwanted objects from photos." },
+  // { label: "Object Remover", icon: Scissors, href: "/dashboard/object-remover", color: "text-red-400", bg: "group-hover:bg-red-500/20 bg-slate-800/50", border: "group-hover:border-red-500/50", shadow: "group-hover:shadow-red-500/20", desc: "Remove unwanted objects from photos." },
 ];
 
 export default function DashboardPage() {
