@@ -3,17 +3,10 @@
 import { useState, useRef } from "react";
 import { FileSearch, Upload, CheckCircle2, AlertCircle, FileText, ChevronRight, Loader2, X, File as FileIcon } from "lucide-react";
 
-interface AnalysisResult {
-  overallScore: number;
-  strengths: string[];
-  improvements: string[];
-  executiveSummary: string;
-}
-
 export default function ResumeAnalyzerPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [result, setResult] = useState<object | null>(null);
   const [error, setError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,7 +34,7 @@ export default function ResumeAnalyzerPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const cleanAndParseJSON = (text: string): AnalysisResult => {
+  const cleanAndParseJSON = (text: string): object => {
     try {
       // Find JSON content within potential markdown code blocks
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -75,12 +68,14 @@ export default function ResumeAnalyzerPage() {
       });
 
       const data = await response.json();
+      console.log("API Response:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to analyze resume");
       }
 
       const parsedResult = cleanAndParseJSON(data.result);
+      console.log("Parsed Result:", parsedResult);
       setResult(parsedResult);
 
     } catch (err) {
@@ -201,16 +196,16 @@ export default function ResumeAnalyzerPage() {
                          <div className="relative z-10">
                             <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Overall Score</p>
                             <h2 className={`text-6xl font-bold mt-2 ${
-                                result.overallScore >= 80 ? "text-emerald-400" : 
-                                result.overallScore >= 60 ? "text-yellow-400" : "text-red-400"
+                                result.score >= 80 ? "text-emerald-400" : 
+                                result.score >= 60 ? "text-yellow-400" : "text-red-400"
                             }`}>
-                                {result.overallScore}<span className="text-2xl text-slate-600 ml-1">/100</span>
+                                {result.score}<span className="text-2xl text-slate-600 ml-1">/100</span>
                             </h2>
                          </div>
                          <div className="relative z-10 w-24 h-24 flex items-center justify-center">
                             <div className={`w-full h-full rounded-full border-8 border-r-transparent rotate-45 ${
-                                result.overallScore >= 80 ? "border-emerald-500" : 
-                                result.overallScore >= 60 ? "border-yellow-500" : "border-red-500"
+                                result.score >= 80 ? "border-emerald-500" : 
+                                result.score >= 60 ? "border-yellow-500" : "border-red-500"
                             }`} />
                          </div>
                     </div>
@@ -235,10 +230,10 @@ export default function ResumeAnalyzerPage() {
                                 <AlertCircle className="w-5 h-5" /> Improvements
                             </h4>
                             <ul className="space-y-3">
-                                {result.improvements.map((item, idx) => (
+                                {result.suggestions.map((item, idx) => (
                                     <li key={idx} className="flex gap-3 text-sm text-slate-300">
                                         <ChevronRight className="w-4 h-4 text-red-500/50 flex-shrink-0 mt-0.5" /> 
-                                        {item}
+                                        {item.section + ": " + item.advice}
                                     </li>
                                 ))}
                             </ul>
@@ -252,7 +247,7 @@ export default function ResumeAnalyzerPage() {
                             AI Executive Summary
                         </h4>
                         <div className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed">
-                            {result.executiveSummary}
+                            {result.summary}
                         </div>
                     </div>
                 </div>
