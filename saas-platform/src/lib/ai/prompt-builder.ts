@@ -15,7 +15,7 @@ export class PromptBuilder {
 
   // 2. Objective (Task)
   withObjective(topic: string, length: number = 100): PromptBuilder {
-    this.parts.push(`Your task is to write a comprehensive article (about ${length} words) about: "${topic}".`);
+    this.parts.push(`Your task is to write a comprehensive article (about ${length}) about: "${topic}".`);
     return this;
   }
 
