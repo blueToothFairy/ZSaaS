@@ -97,25 +97,25 @@ export default function ImageToPlaylistPage() {
     return (
         // Container chính: Full màn hình, 2 cột
         <div className="max-w-[1600px] mx-auto p-4 h-screen flex flex-col gap-4 overflow-hidden">
-            
-            {/* Header - Span across both columns */}
-            <div className="shrink-0 h-16 flex items-center justify-center relative bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-3">
+            {/* Header */}
+            <div className="flex items-center gap-4 shrink-0 h-16 px-2">
+                <div className="p-2.5 rounded-2xl bg-violet-500/10 border border-violet-500/20 shadow-lg shadow-violet-500/10">
                     <ImageIcon className="w-6 h-6 text-pink-400" />
-                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-pink-200 to-purple-400">
-                        Image to Vibe Playlist
-                    </h1>
+                </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-white tracking-tight">AI Image-Vibe Matcher</h1>
+                    <p className="text-slate-400 text-sm">Extarct your pixel and recommend matching playlist.</p>
                 </div>
             </div>
 
             {/* Main Grid: 2 Columns Equal Height */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
-                
+
                 {/* LEFT COLUMN: UPLOAD - KHÔNG SCROLL */}
                 <div className="flex flex-col h-full bg-slate-900/30 rounded-3xl border border-slate-800 p-8 overflow-hidden">
                     <div className="h-full flex flex-col justify-center items-center gap-6">
-                        
-                         {/* Upload Box Container */}
+
+                        {/* Upload Box Container */}
                         <div className="w-full relative group p-1 rounded-[32px] bg-gradient-to-br from-pink-500/20 via-purple-500/10 to-indigo-500/20 max-w-lg">
                             <div className="absolute inset-0 blur-xl bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
@@ -188,35 +188,51 @@ export default function ImageToPlaylistPage() {
                 {/* RIGHT COLUMN: OUTPUT - SCROLLABLE */}
                 <div className="h-full rounded-3xl border border-slate-800 bg-slate-950/20 relative overflow-hidden flex flex-col">
                     {songs.length === 0 && !isLoading ? (
-                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
                             <div className="inline-flex p-4 rounded-full bg-slate-800/50 mb-4">
                                 <Music className="w-10 h-10 text-slate-600" />
                             </div>
                             <p className="text-slate-400 text-lg font-medium">Ready to find your vibe.</p>
                         </div>
                     ) : (
-                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
                             {isLoading && songs.length === 0 && (
                                 <div className="flex flex-col items-center justify-center h-full gap-4">
                                     <Loader2 className="w-10 h-10 text-pink-500 animate-spin" />
                                     <p className="text-pink-400 animate-pulse">Extracting vibe from pixels...</p>
                                 </div>
                             )}
-                            
+
                             {songs.length > 0 && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-5">
-                                    <div className="flex items-center gap-3 mb-4 sticky top-0 bg-[#0B0F19]/90 backdrop-blur-xl p-3 rounded-xl border border-white/5 z-10">
-                                        <Disc className="w-5 h-5 text-pink-500 animate-spin-slow" />
-                                        <h2 className="text-lg font-bold text-white">Your Playlist</h2>
+                                <>
+                                    {songs.length > 0 && (
+                                        <div className="shrink-0 px-6 pt-6 pb-2 z-20">
+                                            <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0B0F19]/95 border border-white/10 shadow-xl backdrop-blur-md">
+                                                <Disc className="w-5 h-5 text-pink-500 animate-spin-slow" />
+                                                <h2 className="text-lg font-bold text-white">Your Playlist</h2>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4">
+                                        {isLoading && songs.length === 0 && (
+                                            <div className="flex flex-col items-center justify-center h-full gap-4">
+                                                <Loader2 className="w-10 h-10 text-pink-500 animate-spin" />
+                                                <p className="text-pink-400 animate-pulse">Extracting vibe from pixels...</p>
+                                            </div>
+                                        )}
+
+                                        {songs.length > 0 && (
+                                            <div className="grid gap-3 animate-in fade-in slide-in-from-bottom-5">
+                                                {songs.map((song, index) => (
+                                                    <SongCard key={song.trackId} song={song} index={index} />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="grid gap-3">
-                                        {songs.map((song, index) => (
-                                            <SongCard key={song.trackId} song={song} index={index} />
-                                        ))}
-                                    </div>
-                                </div>
+                                </>
                             )}
-                         </div>
+                        </div>
                     )}
                 </div>
             </div>
