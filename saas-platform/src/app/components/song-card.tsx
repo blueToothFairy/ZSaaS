@@ -115,8 +115,6 @@ export const SongCard = ({ song, index }: { song: Song, index: number }) => {
                     <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" /> {releaseYear}
                     </span>
-                     <span>•</span>
-                    <span>{formatTime(song.trackTimeMillis)}</span>
                 </div>
             </div>
 

@@ -5,7 +5,7 @@ export class GeminiService implements IAIService {
   private client: GoogleGenAI;
   private modelName: string;
 
-  constructor(apiKey: string, modelName: string = "gemini-1.5-flash") {
+  constructor(apiKey: string, modelName: string = "gemini-2.5-flash") {
     this.client = new GoogleGenAI({ apiKey });
     this.modelName = modelName;
   }
@@ -16,7 +16,7 @@ export class GeminiService implements IAIService {
     let attempt = 0;
     try {
       const response = await this.client.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: this.modelName,
         contents: prompt,
         config: {
           thinkingConfig: {
@@ -59,7 +59,7 @@ export class GeminiService implements IAIService {
         }
       ];
       const response = await this.client.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: this.modelName,
         contents: contents,
       });
       if (!response || !response.text) {
@@ -85,7 +85,7 @@ export class GeminiService implements IAIService {
     try {
       const contents = prompt + "\n\n" + resumeText;
       const response = await this.client.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: this.modelName,
         contents: contents,
         config: {
           thinkingConfig: {
