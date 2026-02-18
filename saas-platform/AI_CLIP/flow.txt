@@ -1,0 +1,52 @@
+Client gửi ảnh
+    ↓
+FastAPI
+    ↓
+CLIP Vision Encoder  →  image_embedding (512)
+    ↓
+Normalize
+    ↓
+So sánh với text_embedding đã lưu (512)
+    ↓
+Cosine similarity
+    ↓
+Trả top-k
+
+
+    weather = [
+        "rainy", "stormy", "sunny", "foggy", "snowy", "cloudy",
+        "windy", "thunder", "lightning", "drizzle", "misty",
+        "humid", "icy", "heatwave", "breeze"
+    ]
+
+    animals = [
+        "wolf", "lion", "tiger", "cat", "dog", "eagle",
+        "owl", "fox", "whale", "shark", "butterfly",
+        "dragon", "snake", "horse", "crow"
+    ]
+
+    feelings = [
+        "happy", "sad", "melancholic", "nostalgic", "romantic",
+        "lonely", "hopeful", "angry", "peaceful", "anxious",
+        "dreamy", "mysterious", "dark", "uplifting",
+        "energetic", "calm", "chill", "epic", "intense"
+    ]
+
+    genres = [
+        "lofi", "jazz", "classical", "rock", "indie",
+        "ambient", "electronic", "pop", "hip hop",
+        "trap", "orchestral", "acoustic", "techno",
+        "house", "punk", "metal", "synthwave"
+    ]
+
+    scenes = [
+        "late night city", "sunset beach", "forest morning",
+        "empty road", "rainy window", "coffee shop",
+        "mountain sunrise", "neon city", "space travel",
+        "cyberpunk alley", "desert horizon", "underwater world"
+    ]
+
+    times = [
+        "midnight", "dawn", "twilight", "evening",
+        "morning", "afternoon"
+    ]

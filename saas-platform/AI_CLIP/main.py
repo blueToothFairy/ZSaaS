@@ -7,25 +7,33 @@ import io
 import psutil
 import os
 
+MODEL_PATH = "clip_vision_512.onnx"
+TEXT_EMB_PATH = "vibe_embeddings.npy"
+KEYWORDS_PATH = "vibe_keywords.npy"
+
+
 def print_memory_usage(stage=""):
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss / 1024 / 1024
     print(f"[{stage}] RAM usage: {mem:.2f} MB")
 
-MODEL_PATH = "clip_vision_512.onnx"
 
 app = FastAPI()
 
-# Global objects (loaded once)
 session: ort.InferenceSession = None
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+text_matrix = None
+keywords = None
 
 
 def create_session():
     so = ort.SessionOptions()
     so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-    so.intra_op_num_threads = 1   # giảm RAM free tier
+    so.intra_op_num_threads = 1
     so.inter_op_num_threads = 1
+    so.enable_mem_pattern = False
+    so.enable_cpu_mem_arena = False
 
     return ort.InferenceSession(
         MODEL_PATH,
@@ -36,13 +44,19 @@ def create_session():
 
 @app.on_event("startup")
 def startup_event():
-    global session
+    global session, text_matrix, keywords
 
     print_memory_usage("Before load")
 
     session = create_session()
 
-    print_memory_usage("After load")
+    text_matrix = np.load(TEXT_EMB_PATH)       # (N,512)
+    keywords = np.load(KEYWORDS_PATH)          # (N,)
+
+    text_matrix = text_matrix / np.linalg.norm(text_matrix, axis=1, keepdims=True)
+
+
+    print("Loaded text embeddings:", text_matrix.shape)
 
     dummy = np.random.randn(1, 3, 224, 224).astype(np.float32)
     session.run(None, {"pixel_values": dummy})
@@ -52,6 +66,7 @@ def startup_event():
 
 @app.post("/embed")
 async def embed_image(file: UploadFile = File(...)):
+
     if not file:
         raise HTTPException(status_code=400, detail="No file provided")
 
@@ -60,19 +75,29 @@ async def embed_image(file: UploadFile = File(...)):
     try:
         image = Image.open(io.BytesIO(contents)).convert("RGB")
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid image file")
+        raise HTTPException(status_code=400, detail="Invalid image")
 
-    # Preprocess theo chuẩn CLIP
     inputs = processor(images=image, return_tensors="np")
 
-    # ONNX inference
-    embedding = session.run(
-        ["image_embeddings"],   # explicit output name
+    image_emb = session.run(
+        ["image_embeddings"],
         {"pixel_values": inputs["pixel_values"]}
-    )[0]
+    )[0]  # (1,512)
 
-    # embedding shape: (1, 512)
+    # cosine similarity (already normalized)
+    image_emb = image_emb / np.linalg.norm(image_emb, axis=1, keepdims=True)
+    scores = (image_emb @ text_matrix.T)   # (1,N)
+
+    topk_idx = np.argsort(-scores[0])[:10]
+
+    top_keywords = [
+        {
+            "keyword": keywords[i],
+            "score": float(scores[0][i])
+        }
+        for i in topk_idx
+    ]
+
     return {
-        "embedding": embedding[0].tolist(),
-        "shape": list(embedding.shape)
+        "top_keywords": top_keywords
     }
