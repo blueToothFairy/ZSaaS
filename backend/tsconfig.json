@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    /* 1. Cấu hình Môi trường (Quan trọng cho "type": "module") */
+    "target": "ES2022",               // Node.js hỗ trợ tốt ES2022, ổn định hơn ESNext
+    "module": "NodeNext",             // Bắt buộc để chạy ESM
+    "moduleResolution": "NodeNext",   // Bắt buộc để resolve import theo chuẩn ESM
+    "lib": ["ESNext"],                // Chỉ lấy thư viện JS mới nhất, không cần "DOM" vì là Backend
+
+    /* 2. Cấu hình Thư mục */
+    "rootDir": "./src",               // Chỉ định thư mục chứa code nguồn
+    "outDir": "./dist",               // Thư mục chứa code sau khi build
+    "resolveJsonModule": true,        // Cho phép import file .json
+    
+    /* 3. Tương thích & Module */
+    "esModuleInterop": true,          // Quan trọng: Giúp import các thư viện cũ (CommonJS) như Express dễ dàng
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true, // Tránh lỗi sai hoa/thường tên file (Linux/Mac vs Windows)
+
+    /* 4. Kiểm tra lỗi (Strict Mode) */
+    "strict": true,
+    "noImplicitAny": true,            // Báo lỗi nếu biến không có type rõ ràng
+    "skipLibCheck": true,             // Bỏ qua check type trong node_modules (giúp VS Code nhanh hơn)
+    
+    /* Các tùy chọn nâng cao bạn đã bật (Giữ nguyên vì tốt) */
+    "noUncheckedIndexedAccess": true, // An toàn hơn khi truy cập mảng/object
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true
+  },
+  "include": ["src/**/*", "src/shared/db/client.ts"],            // Chỉ biên dịch file trong thư mục src
+  "exclude": ["node_modules", "dist"] // Bỏ qua thư mục rác
+}
