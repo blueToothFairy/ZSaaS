@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from "@clerk/nextjs";
 import axios from 'axios';
 import {
-  CloudRain, Camera, Home, Search, Library, User,
+  CloudRain, Cloud, CloudSnow, Sun, CloudDrizzle, CloudLightning, Eye,
+  Camera, Home, Search, Library, User,
   Sparkles, Wind, Droplets, Settings, LogOut,
   Play, Pause, ArrowRight, SkipForward, SkipBack,
   Disc3, Volume2, Menu, X
@@ -23,6 +24,31 @@ interface Song {
   externalUrl?: string;
   duration?: number;
   releaseDate?: string;
+}
+
+interface WeatherData {
+  temperature: number;
+  weatherCode: number;
+  humidity: number;
+  windSpeed: number;
+  condition: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    country: string;
+    countryCode: string;
+  };
+}
+
+interface TodayVibeResponse {
+  success: boolean;
+  data: {
+    weather: WeatherData;
+    songs: Song[];
+    genres: string[];
+    mood: string;
+    reasoning: string;
+  };
 }
 
 const covers = {
@@ -100,6 +126,172 @@ export default function App() {
   const [hoveredAlbum, setHoveredAlbum] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [curatedSongs, setCuratedSongs] = useState<Song[]>([]);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(true);
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [currentPlaylist, setCurrentPlaylist] = useState<Song[]>([]);
+  const [currentTrack, setCurrentTrack] = useState<Song | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioElapsed, setAudioElapsed] = useState(0);
+
+  useEffect(() => {
+    const fetchTodayVibe = async () => {
+      try {
+        setIsLoadingWeather(true);
+        const response = await axios.get<TodayVibeResponse>('/api/vibe-scan/today-vibe');
+        
+        if (response.data.success) {
+          setWeatherData(response.data.data.weather);
+          setCuratedSongs(response.data.data.songs);
+        }
+      } catch (error: any) {
+      } finally {
+        setIsLoadingWeather(false);
+      }
+    };
+
+    fetchTodayVibe();
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setAudioElapsed(audio.currentTime);
+      setAudioProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0);
+    };
+
+    const handleLoadedMetadata = () => {
+      setAudioDuration(audio.duration);
+    };
+
+    const handleDurationChange = () => {
+      setAudioDuration(audio.duration);
+    };
+
+    const handleEnded = () => {
+      handleNextTrack();
+    };
+
+    const handlePlay = () => {
+      setIsAudioPlaying(true);
+    };
+
+    const handlePause = () => {
+      setIsAudioPlaying(false);
+    };
+
+    const handleError = (e: Event) => {
+      setIsAudioPlaying(false);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('error', handleError);
+    };
+  }, [currentPlaylist, currentTrack]);
+
+  const playTrack = (song: Song, playlist?: Song[]) => {
+    if (!song.previewUrl) {
+      return;
+    }
+
+    setCurrentTrack(song);
+    if (playlist) setCurrentPlaylist(playlist);
+
+    if (audioRef.current) {
+      audioRef.current.src = song.previewUrl;
+      audioRef.current.play().then(() => {
+        setIsAudioPlaying(true);
+      }).catch(err => {
+        setIsAudioPlaying(false);
+      });
+    }
+  };
+
+  const handleNextTrack = () => {
+    if (!currentTrack || currentPlaylist.length === 0) return;
+    const idx = currentPlaylist.findIndex(s => s.id === currentTrack.id);
+    if (idx !== -1 && idx < currentPlaylist.length - 1) {
+      playTrack(currentPlaylist[idx + 1], currentPlaylist);
+    }
+  };
+
+  const handlePrevTrack = () => {
+    if (!currentTrack || currentPlaylist.length === 0) return;
+    const idx = currentPlaylist.findIndex(s => s.id === currentTrack.id);
+    if (idx > 0) {
+      playTrack(currentPlaylist[idx - 1], currentPlaylist);
+    }
+  };
+
+  const toggleAudioPlayPause = () => {
+    if (!audioRef.current) return;
+
+    if (isAudioPlaying) {
+      audioRef.current.pause();
+      setIsAudioPlaying(false);
+    } else {
+      audioRef.current.play().then(() => {
+        setIsAudioPlaying(true);
+      }).catch(err => {
+        setIsAudioPlaying(false);
+      });
+    }
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current || !currentTrack) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = x / rect.width;
+    audioRef.current.currentTime = percentage * audioRef.current.duration;
+    setAudioElapsed(audioRef.current.currentTime);
+    setAudioProgress(percentage * 100);
+  };
+
+  const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getWeatherIcon = (weatherCode: number) => {
+    if (weatherCode <= 1) {
+      return <Sun className="w-5 h-5 text-amber-400" />;
+    } else if (weatherCode === 2) {
+      return <Cloud className="w-5 h-5 text-slate-400" />;
+    } else if (weatherCode === 3) {
+      return <Cloud className="w-5 h-5 text-slate-500" />;
+    } else if ((weatherCode >= 45 && weatherCode <= 48) || (weatherCode >= 51 && weatherCode <= 82)) {
+      return <CloudRain className="w-5 h-5 text-sky-400" />;
+    } else if ((weatherCode >= 71 && weatherCode <= 77) || (weatherCode >= 85 && weatherCode <= 86)) {
+      return <CloudSnow className="w-5 h-5 text-blue-300" />;
+    } else if (weatherCode >= 95) {
+      return <CloudLightning className="w-5 h-5 text-purple-400" />;
+    } else {
+      return <Cloud className="w-5 h-5 text-slate-400" />;
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -178,7 +370,6 @@ export default function App() {
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'search', icon: Search, label: 'Search' },
-    { id: 'library', icon: Library, label: 'Library' },
     { id: 'profile', icon: User, label: 'Profile' },
   ];
 
@@ -240,33 +431,6 @@ export default function App() {
                 </button>
               ))}
             </nav>
-
-            <div className="mt-auto space-y-4">
-              <div className="p-3 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden shadow-md flex-shrink-0">
-                    <ImageWithFallback src={nowPlayingData.image} alt={nowPlayingData.title} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{nowPlayingData.title}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{nowPlayingData.artist}</p>
-                  </div>
-                  <Equalizer bars={3} active={isPlaying} className="text-rose-400" />
-                </div>
-                <div className="mt-2.5 h-[3px] bg-slate-200/40 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-rose-400 to-amber-400 rounded-full transition-all" style={{ width: `${nowPlayingData.progress}%` }} />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-white/15 space-y-1">
-                <button className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl hover:bg-white/15 text-slate-500 transition-colors text-[14px]">
-                  <Settings className="w-[18px] h-[18px]" /><span>Settings</span>
-                </button>
-                <button className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl hover:bg-red-50/40 text-slate-500 hover:text-red-500 transition-colors text-[14px]">
-                  <LogOut className="w-[18px] h-[18px]" /><span>Logout</span>
-                </button>
-              </div>
-            </div>
           </div>
         </motion.aside>
 
@@ -321,7 +485,7 @@ export default function App() {
                 transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="lg:col-span-3 h-[280px] lg:h-full"
               >
-                <div className="relative h-full bg-white/20 backdrop-blur-xl border border-white/40 p-7 rounded-3xl shadow-lg shadow-slate-900/[0.04] hover:shadow-xl transition-shadow duration-500 overflow-hidden group">
+                <div className="relative h-full bg-white/20 backdrop-blur-xl border border-white/40 p-7 rounded-3xl shadow-lg shadow-slate-900/[0.04] hover:shadow-xl transition-shadow duration-500 overflow-hidden group flex flex-col">
                   <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
                   <div className="absolute top-0 right-0 w-36 h-full overflow-hidden pointer-events-none opacity-20 group-hover:opacity-40 transition-opacity duration-500">
@@ -339,37 +503,108 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="relative z-10 flex flex-col h-full min-h-[260px]">
-                    <div className="flex items-center justify-between mb-8">
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-center justify-between mb-2 flex-shrink-0">
                       <span className="text-[12px] tracking-[0.15em] uppercase text-slate-400" style={{ fontWeight: 600 }}>
                         Weather · Playlist
                       </span>
                       <CloudRain className="w-5 h-5 text-sky-400" />
                     </div>
 
-                    <div className="flex items-end gap-2 mb-1">
-                      <span className="text-6xl tracking-tighter text-slate-800" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>24°</span>
-                      <span className="text-xl text-slate-400 mb-1.5" style={{ fontWeight: 400 }}>rainy</span>
-                    </div>
+                    <div className="flex-1 flex flex-col min-h-0">
+                      {weatherData ? (
+                        <>
+                          <div className="flex-[0.6] flex items-center justify-center w-full">
+                            <div className="flex items-center gap-4 lg:gap-8">
+                              <div className="flex flex-col items-center">
+                                <span className="text-[5rem] lg:text-[6rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
+                                  {weatherData.temperature}°
+                                </span>
+                                <span className="text-xl lg:text-2xl text-slate-400 mt-2" style={{ fontWeight: 400 }}>
+                                  {weatherData.condition.toLowerCase()}
+                                </span>
+                              </div>
 
-                    <div className="flex gap-3 mt-5">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/25 border border-white/30">
-                        <Wind className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-xs text-slate-600" style={{ fontWeight: 500 }}>12 km/h</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/25 border border-white/30">
-                        <Droplets className="w-3.5 h-3.5 text-sky-400" />
-                        <span className="text-xs text-slate-600" style={{ fontWeight: 500 }}>84%</span>
-                      </div>
-                    </div>
+                              <div className="w-px h-24 lg:h-32 bg-slate-300/40"></div>
 
-                    <div className="mt-auto pt-6">
-                      <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30">
-                        <p className="text-[13px] text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
-                          Rainy day, jazz way — we queued{' '}
-                          <span className="text-rose-500" style={{ fontWeight: 600 }}>lo-fi & soft piano</span> for this weather.
-                        </p>
-                      </div>
+                              <div className="flex flex-col gap-3 lg:gap-4">
+                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Wind className="w-4 h-4 text-slate-400" />
+                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                                    {Math.round(weatherData.windSpeed)} km/h
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Droplets className="w-4 h-4 text-sky-400" />
+                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                                    {weatherData.humidity}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex-[0.4] flex flex-col justify-end w-full pt-2">
+                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center text-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
+                              <p className="text-base lg:text-lg text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
+                                {weatherData.condition.toLowerCase().includes('rain')
+                                  ? `Rainy mood — we queued `
+                                  : weatherData.condition.toLowerCase().includes('snow')
+                                  ? `Snowy vibes — we queued `
+                                  : weatherData.condition.toLowerCase().includes('clear') || weatherData.condition.toLowerCase().includes('sunny')
+                                  ? `Sunny day — we queued `
+                                  : `Perfect weather — we queued `
+                                }
+                                <span className="text-rose-500" style={{ fontWeight: 600 }}>
+                                  {curatedSongs.length > 0 ? `${curatedSongs.length} curated tracks` : 'songs'}
+                                </span>
+                                {' '}for this weather.
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex-[0.6] flex items-center justify-center w-full">
+                            <div className="flex items-center gap-4 lg:gap-8">
+                              <div className="flex flex-col items-center">
+                                <span className="text-[5rem] lg:text-[6rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
+                                  24°
+                                </span>
+                                <span className="text-xl lg:text-2xl text-slate-400 mt-2" style={{ fontWeight: 400 }}>
+                                  rainy
+                                </span>
+                              </div>
+
+                              <div className="w-px h-24 lg:h-32 bg-slate-300/40"></div>
+
+                              <div className="flex flex-col gap-3 lg:gap-4">
+                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Wind className="w-4 h-4 text-slate-400" />
+                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                                    12 km/h
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Droplets className="w-4 h-4 text-sky-400" />
+                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                                    84%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex-[0.4] flex flex-col justify-end w-full pt-2">
+                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center text-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
+                              <p className="text-base lg:text-lg text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
+                                Rainy day, jazz way — we queued{' '}
+                                <span className="text-rose-500" style={{ fontWeight: 600 }}>lo-fi & soft piano</span> for this weather.
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -514,15 +749,29 @@ export default function App() {
                                         initial={{ opacity: 0, x: 10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: i * 0.05 }}
-                                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/40 transition-colors cursor-pointer group"
+                                        onClick={() => playTrack(song, scanResults)}
+                                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 transition-colors cursor-pointer group"
                                       >
-                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-100 to-amber-50 flex items-center justify-center shadow-sm border border-white/50 flex-shrink-0">
-                                          <span className="text-[10px] text-slate-400" style={{ fontWeight: 600 }}>{String(i + 1).padStart(2, '0')}</span>
+                                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-rose-100 to-amber-50 flex items-center justify-center shadow-sm border border-white/50 flex-shrink-0 overflow-hidden">
+                                          {song.artwork ? (
+                                            <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <span className="text-[10px] text-slate-400" style={{ fontWeight: 600 }}>{String(i + 1).padStart(2, '0')}</span>
+                                          )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                           <h4 className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{song.title}</h4>
-                                          <p className="text-[11px] text-slate-400 truncate">{song.artist}</p>
+                                          <p className="text-[12px] text-rose-500 truncate" style={{ fontWeight: 600 }}>{song.artist}</p>
                                         </div>
+                                        {currentTrack?.id === song.id && (
+                                          <div className="flex-shrink-0">
+                                            {isAudioPlaying ? (
+                                              <Equalizer bars={3} active className="text-rose-400" />
+                                            ) : (
+                                              <Play className="w-4 h-4 text-rose-400" />
+                                            )}
+                                          </div>
+                                        )}
                                       </motion.div>
                                     ))}
                                   </div>
@@ -534,7 +783,8 @@ export default function App() {
                               )}
 
                               <div className="absolute inset-0 z-0">
-                                <img src={uploadedImage} alt="Uploaded" className="w-full h-full object-cover opacity-50" />
+                                <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10" />
+                                <img src={uploadedImage} alt="Uploaded" className="w-full h-full object-cover opacity-20 relative z-0" />
                               </div>
                             </motion.div>
                           ) : null}
@@ -559,7 +809,9 @@ export default function App() {
                     </span>
                   </h3>
                   <p className="text-[13px] text-slate-400 mt-0.5" style={{ fontWeight: 400 }}>
-                    Based on your weather, time & listening history
+                    {weatherData
+                      ? `Based on your weather, time & listening history`
+                      : 'Based on your weather, time & listening history'}
                   </p>
                 </div>
                 <button
@@ -571,75 +823,133 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
-                {featured.map((album, index) => (
-                  <motion.div
-                    key={album.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 + index * 0.08, ease: [0.22, 1, 0.36, 1] }}
-                    className="group cursor-pointer"
-                    onMouseEnter={() => setHoveredAlbum(album.id)}
-                    onMouseLeave={() => setHoveredAlbum(null)}
-                  >
-                    <div className="relative rounded-2xl overflow-hidden bg-white/15 backdrop-blur-md border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/[0.06]">
-                      <div className="flex items-center gap-4 p-3.5">
-                        <div className="w-28 h-28 rounded-xl overflow-hidden shadow-lg shadow-slate-900/10 flex-shrink-0 relative">
-                          <ImageWithFallback src={album.image} alt={album.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                            <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300">
-                              <Play className="w-4 h-4 text-slate-800 fill-current ml-0.5" />
+              {curatedSongs.length > 0 && (
+                <div className="grid grid-cols-1 gap-4 mb-5">
+                  {curatedSongs.slice(0, 6).map((song, index) => (
+                    <motion.div
+                      key={song.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 + index * 0.05 }}
+                      onClick={() => playTrack(song, curatedSongs)}
+                      className="group cursor-pointer"
+                      onMouseEnter={() => setHoveredAlbum(Number(song.id))}
+                      onMouseLeave={() => setHoveredAlbum(null)}
+                    >
+                      <div className="relative rounded-2xl overflow-hidden bg-white/15 backdrop-blur-md border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/[0.06]">
+                        <div className="flex items-center gap-4 p-4">
+                          <div className="w-24 h-24 rounded-lg overflow-hidden shadow-lg shadow-slate-900/10 flex-shrink-0 relative">
+                            <ImageWithFallback
+                              src={song.artwork}
+                              alt={song.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                              <div className="w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300">
+                                {currentTrack?.id === song.id && isAudioPlaying ? (
+                                  <Pause className="w-3.5 h-3.5 text-slate-800 fill-current" />
+                                ) : (
+                                  <Play className="w-3.5 h-3.5 text-slate-800 fill-current ml-0.5" />
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex-1 min-w-0 py-1">
-                          <span className="text-[10px] tracking-[0.12em] uppercase text-rose-400 mb-1 block" style={{ fontWeight: 600 }}>{album.genre}</span>
-                          <h4 className="text-lg text-slate-800 truncate leading-tight" style={{ fontWeight: 700 }}>{album.title}</h4>
-                          <p className="text-[13px] text-slate-500 truncate mt-0.5">{album.artist}</p>
-                          <div className="flex items-center gap-3 mt-3">
-                            <span className="text-[11px] text-slate-400">{album.listeners}</span>
-                            {hoveredAlbum === album.id && (
-                              <Equalizer bars={4} active className="text-rose-400 ml-auto" />
+                          <div className="flex-1 min-w-0 py-1">
+                            <span className="text-[10px] tracking-[0.12em] uppercase text-rose-400 mb-1 block" style={{ fontWeight: 600 }}>
+                              {song.album}
+                            </span>
+                            <h4 className="text-base text-slate-800 truncate leading-tight" style={{ fontWeight: 700 }}>
+                              {song.title}
+                            </h4>
+                            <p className="text-[13px] text-slate-500 truncate mt-0.5">{song.artist}</p>
+                            {song.duration && (
+                              <div className="flex items-center gap-3 mt-2">
+                                <span className="text-[11px] text-slate-400">
+                                  {Math.floor(song.duration / 60)}:{String(song.duration % 60).padStart(2, '0')}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                {regular.map((album, index) => (
-                  <motion.div
-                    key={album.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 + index * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                    className="group cursor-pointer"
-                    onMouseEnter={() => setHoveredAlbum(album.id)}
-                    onMouseLeave={() => setHoveredAlbum(null)}
-                  >
-                    <div className="bg-white/12 backdrop-blur-sm border border-white/25 rounded-2xl p-3 hover:bg-white/25 hover:border-white/40 transition-all duration-300 hover:shadow-lg hover:shadow-slate-900/[0.04]">
-                      <div className="aspect-square rounded-xl overflow-hidden mb-3 relative shadow-md shadow-slate-900/[0.06]">
-                        <ImageWithFallback src={album.image} alt={album.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
-                          <div className="w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md scale-75 group-hover:scale-100 transition-transform duration-300">
-                            <Play className="w-3.5 h-3.5 text-slate-800 fill-current ml-0.5" />
+              {curatedSongs.length === 0 && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                    {featured.map((album, index) => (
+                      <motion.div
+                        key={album.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 + index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                        className="group cursor-pointer"
+                        onMouseEnter={() => setHoveredAlbum(album.id)}
+                        onMouseLeave={() => setHoveredAlbum(null)}
+                      >
+                        <div className="relative rounded-2xl overflow-hidden bg-white/15 backdrop-blur-md border border-white/30 hover:border-white/50 transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/[0.06]">
+                          <div className="flex items-center gap-4 p-3.5">
+                            <div className="w-28 h-28 rounded-xl overflow-hidden shadow-lg shadow-slate-900/10 flex-shrink-0 relative">
+                              <ImageWithFallback src={album.image} alt={album.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300">
+                                  <Play className="w-4 h-4 text-slate-800 fill-current ml-0.5" />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0 py-1">
+                              <span className="text-[10px] tracking-[0.12em] uppercase text-rose-400 mb-1 block" style={{ fontWeight: 600 }}>{album.genre}</span>
+                              <h4 className="text-lg text-slate-800 truncate leading-tight" style={{ fontWeight: 700 }}>{album.title}</h4>
+                              <p className="text-[13px] text-slate-500 truncate mt-0.5">{album.artist}</p>
+                              <div className="flex items-center gap-3 mt-3">
+                                <span className="text-[11px] text-slate-400">{album.listeners}</span>
+                                {hoveredAlbum === album.id && (
+                                  <Equalizer bars={4} active className="text-rose-400 ml-auto" />
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="px-0.5">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider" style={{ fontWeight: 500 }}>{album.genre}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                    {regular.map((album, index) => (
+                      <motion.div
+                        key={album.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 + index * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                        className="group cursor-pointer"
+                        onMouseEnter={() => setHoveredAlbum(album.id)}
+                        onMouseLeave={() => setHoveredAlbum(null)}
+                      >
+                        <div className="bg-white/12 backdrop-blur-sm border border-white/25 rounded-2xl p-3 hover:bg-white/25 hover:border-white/40 transition-all duration-300 hover:shadow-lg hover:shadow-slate-900/[0.04]">
+                          <div className="aspect-square rounded-xl overflow-hidden mb-3 relative shadow-md shadow-slate-900/[0.06]">
+                            <ImageWithFallback src={album.image} alt={album.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
+                              <div className="w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md scale-75 group-hover:scale-100 transition-transform duration-300">
+                                <Play className="w-3.5 h-3.5 text-slate-800 fill-current ml-0.5" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="px-0.5">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider" style={{ fontWeight: 500 }}>{album.genre}</span>
+                            </div>
+                            <h4 className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{album.title}</h4>
+                            <p className="text-[11px] text-slate-400 truncate">{album.artist}</p>
+                          </div>
                         </div>
-                        <h4 className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{album.title}</h4>
-                        <p className="text-[11px] text-slate-400 truncate">{album.artist}</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </main>
@@ -655,54 +965,81 @@ export default function App() {
             <div className="flex items-center gap-3 w-[240px]">
               <div
                 className="w-11 h-11 rounded-lg overflow-hidden shadow-md flex-shrink-0 vinyl-spin"
-                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                style={{ animationPlayState: isAudioPlaying ? 'running' : 'paused' }}
               >
-                <ImageWithFallback src={nowPlayingData.image} alt={nowPlayingData.title} className="w-full h-full object-cover" />
+                <ImageWithFallback 
+                  src={currentTrack?.artwork || nowPlayingData.image} 
+                  alt={currentTrack?.title || nowPlayingData.title} 
+                  className="w-full h-full object-cover" 
+                />
               </div>
               <div className="min-w-0">
-                <p className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{nowPlayingData.title}</p>
-                <p className="text-[11px] text-slate-400 truncate">{nowPlayingData.artist}</p>
+                <p className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>
+                  {currentTrack?.title || nowPlayingData.title}
+                </p>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {currentTrack?.artist || nowPlayingData.artist}
+                </p>
               </div>
             </div>
 
             <div className="flex-1 flex flex-col items-center gap-1.5">
               <div className="flex items-center gap-4">
-                <button className="text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={handlePrevTrack} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <SkipBack className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors shadow-md"
+                  onClick={toggleAudioPlayPause}
+                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors shadow-md overflow-hidden relative"
                 >
-                  {isPlaying
-                    ? <Pause className="w-4 h-4 text-white" />
-                    : <Play className="w-4 h-4 text-white ml-0.5 fill-white" />
-                  }
+                  <AnimatePresence mode="wait">
+                    {isAudioPlaying ? (
+                      <motion.div
+                        key="pause"
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: 180 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      >
+                        <Pause className="w-4 h-4 text-white" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="play"
+                        initial={{ scale: 0, rotate: 180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: -180 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      >
+                        <Play className="w-4 h-4 text-white ml-0.5 fill-white" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </button>
-                <button className="text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={handleNextTrack} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <SkipForward className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex items-center gap-2 w-full max-w-md">
-                <span className="text-[10px] text-slate-400 w-8 text-right" style={{ fontWeight: 500 }}>{nowPlayingData.elapsed}</span>
-                <div className="flex-1 h-[3px] bg-slate-200/40 rounded-full overflow-hidden cursor-pointer group">
+                <span className="text-[10px] text-slate-400 w-8 text-right" style={{ fontWeight: 500 }}>
+                  {currentTrack ? formatTime(audioElapsed) : nowPlayingData.elapsed}
+                </span>
+                <div className="flex-1 h-[3px] bg-slate-200/40 rounded-full overflow-hidden cursor-pointer group" onClick={handleProgressClick}>
                   <div
                     className="h-full bg-gradient-to-r from-rose-400 to-amber-400 rounded-full relative transition-all group-hover:h-[4px]"
-                    style={{ width: `${nowPlayingData.progress}%` }}
+                    style={{ width: `${currentTrack ? audioProgress : nowPlayingData.progress}%` }}
                   >
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
-                <span className="text-[10px] text-slate-400 w-8" style={{ fontWeight: 500 }}>{nowPlayingData.duration}</span>
+                <span className="text-[10px] text-slate-400 w-8" style={{ fontWeight: 500 }}>
+                  {currentTrack ? formatTime(audioDuration) : nowPlayingData.duration}
+                </span>
               </div>
             </div>
 
             <div className="flex items-center gap-3 w-[140px] justify-end">
-              <Equalizer bars={5} active={isPlaying} className="text-rose-400" />
-              <Volume2 className="w-4 h-4 text-slate-400" />
-              <div className="w-20 h-[3px] bg-slate-200/40 rounded-full overflow-hidden">
-                <div className="h-full bg-slate-400 rounded-full" style={{ width: '65%' }} />
-              </div>
+              <Equalizer bars={5} active={isAudioPlaying} className="text-rose-400" />
             </div>
           </div>
         </div>
@@ -710,7 +1047,7 @@ export default function App() {
 
       <nav className="md:hidden fixed bottom-5 left-5 right-5 z-50">
         <AnimatePresence>
-          {isPlaying && (
+          {isAudioPlaying && currentTrack && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -719,20 +1056,50 @@ export default function App() {
             >
               <div
                 className="w-9 h-9 rounded-lg overflow-hidden shadow-sm flex-shrink-0 vinyl-spin"
-                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                style={{ animationPlayState: isAudioPlaying ? 'running' : 'paused' }}
               >
-                <ImageWithFallback src={nowPlayingData.image} alt={nowPlayingData.title} className="w-full h-full object-cover" />
+                <ImageWithFallback 
+                  src={currentTrack.artwork} 
+                  alt={currentTrack.title} 
+                  className="w-full h-full object-cover" 
+                />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{nowPlayingData.title}</p>
-                <p className="text-[10px] text-slate-400 truncate">{nowPlayingData.artist}</p>
+                <p className="text-[12px] text-slate-800 truncate" style={{ fontWeight: 600 }}>
+                  {currentTrack.title}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  {currentTrack.artist}
+                </p>
               </div>
               <Equalizer bars={3} active className="text-rose-400 mr-1" />
               <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0"
+                onClick={toggleAudioPlayPause}
+                className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0 overflow-hidden relative"
               >
-                <Pause className="w-3 h-3 text-white" />
+                <AnimatePresence mode="wait">
+                  {isAudioPlaying ? (
+                    <motion.div
+                      key="pause-mobile"
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      exit={{ scale: 0, rotate: 180 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    >
+                      <Pause className="w-3 h-3 text-white" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="play-mobile"
+                      initial={{ scale: 0, rotate: 180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      exit={{ scale: 0, rotate: -180 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    >
+                      <Play className="w-3 h-3 text-white fill-white ml-0.5" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </button>
             </motion.div>
           )}
@@ -801,6 +1168,8 @@ export default function App() {
         }
         .vinyl-spin { animation: vinyl-rotate 3s linear infinite; }
       `}</style>
+
+      <audio ref={audioRef} crossOrigin="anonymous" />
     </div>
   );
 }

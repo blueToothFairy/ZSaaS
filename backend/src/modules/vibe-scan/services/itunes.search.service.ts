@@ -22,7 +22,7 @@ export default class ITunesSearchService implements ISongSearch {
   private readonly baseUrl = "https://itunes.apple.com/search";
   private readonly maxRetries = 3;
 
-  async searchSongs(query: string, limit: number = 10): Promise<any> {
+  async searchSongs(query: string, limit: number = 10, country: string = "US"): Promise<any> {
     console.log('searchSongs');
     try {
       const response = await axios.get<ITunesResponse>(this.baseUrl, {
@@ -31,7 +31,7 @@ export default class ITunesSearchService implements ISongSearch {
           media: "music",
           entity: "song",
           limit: Math.min(limit, 50),
-          country: "US",
+          country,
         },
         timeout: 10000,
       });
@@ -54,7 +54,7 @@ export default class ITunesSearchService implements ISongSearch {
     }
   }
 
-  async searchByKeywords(keywords: string[], limit: number = 10): Promise<SearchResult> {
+  async searchByKeywords(keywords: string[], limit: number = 10, country: string = "US"): Promise<SearchResult> {
     const finalSongs: Song[] = [];
     const seen = new Set<string>();
 
@@ -70,7 +70,7 @@ export default class ITunesSearchService implements ISongSearch {
             media: "music",
             entity: "song",
             limit: limit,
-            country: "US",
+            country,
           },
           timeout: 10000,
         });

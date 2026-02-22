@@ -64,6 +64,24 @@ export default class VibeScannerController {
     }
   }
 
+  async getTodayVibe(req: Request, res: Response): Promise<void> {
+    try {
+      const vibeData = await this.vibeService.getTodayVibe();
+
+      res.status(200).json({
+        success: true,
+        data: vibeData,
+      });
+    } catch (error: any) {
+      console.error('getTodayVibe error:', error);
+
+      res.status(axios.isAxiosError(error) ? 502 : 500).json({
+        error: "Failed to get today's vibe",
+        ...(process.env.NODE_ENV === 'development' && { details: error.message })
+      });
+    }
+  }
+
   async getUserHistory(req: ClerkRequest, res: Response): Promise<void> {
     const userId = req.auth.userId;
     if (!userId) {

@@ -1,7 +1,7 @@
 import {
   AIOutputDTO,
   CreateAIOutputDTO
-} from '../dto/ai-repo';
+} from '../dto/ai-repo.js';
 
 export default interface AIRepositoty {
   create(data: CreateAIOutputDTO) : Promise<AIOutputDTO>;

@@ -2,7 +2,11 @@ import VibeScannerController from "./vibe.controller.js";
 import VibeScannerService from "./services/index.js";
 import CLIPService from "./services/CLIP.service.js";
 import ITunesSearchService from "./services/itunes.search.service.js";
+import WeatherService from "./services/weather.service.js";
+import WeatherGenreService from "./services/weather-genre.service.js";
 import KnexAIOutputsRepository from "./repositories/ai-outputs.knex.js"
+import IWeatherService from "./interfaces/weather.interface.js";
+import IWeatherGenreService from "./interfaces/weather-genre.interface.js";
 import db from '../../shared/db/knexClient.js';
 
 // CLIP URL may not be available in all environments (e.g. tests or local dev).
@@ -15,9 +19,11 @@ import db from '../../shared/db/knexClient.js';
 
 const clipService = new CLIPService();
 const iTunesSearchService = new ITunesSearchService();
+const weatherService: IWeatherService = new WeatherService();
+const weatherGenreService: IWeatherGenreService = new WeatherGenreService();
 const aiRepo = new KnexAIOutputsRepository(db);
 
-const vibeScannerService = new VibeScannerService(clipService, iTunesSearchService, aiRepo);
+const vibeScannerService = new VibeScannerService(clipService, iTunesSearchService, aiRepo, weatherService, weatherGenreService);
 
 const vibeController = new VibeScannerController(vibeScannerService);
 

@@ -17,6 +17,6 @@ export interface SearchResult {
 }
 
 export default interface ISongSearch {
-  searchSongs(query: string, limit?: number): Promise<SearchResult>;
-  searchByKeywords(keywords: string[], limit?: number): Promise<SearchResult>;
+  searchSongs(query: string, limit?: number, country?: string): Promise<SearchResult>;
+  searchByKeywords(keywords: string[], limit?: number, country?: string): Promise<SearchResult>;
 }
