@@ -533,27 +533,29 @@ export default function App() {
                     <div className="flex-1 flex flex-col min-h-0">
                       {weatherData ? (
                         <>
-                          <div className="flex-[0.6] flex items-center justify-center w-full">
-                            <div className="flex items-center gap-4 lg:gap-8">
-                              <div className="flex flex-col items-center relative translate-x-6 lg:translate-x-6">
+                          <div className="flex-[0.6] flex items-center justify-center w-full px-2">
+                            <div className="flex items-center justify-center gap-6 lg:gap-10 w-full max-w-[90%] mx-auto">
+                              <div className="flex flex-col items-center flex-shrink-0">
                                 <span className="text-[5rem] lg:text-[6rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
-                                  {weatherData ? weatherData.temperature : '24'}°
+                                  {weatherData.temperature}°
                                 </span>
-                                <span className="text-xl lg:text-2xl text-slate-400 mt-2" style={{ fontWeight: 400 }}>
-                                  {weatherData ? weatherData.condition.toLowerCase() : 'rainy'}
+                                <span className="text-xl lg:text-2xl text-slate-400 mt-2 text-center" style={{ fontWeight: 400 }}>
+                                  {weatherData.condition.toLowerCase()}
                                 </span>
                               </div>
 
-                              <div className="flex flex-col gap-3 lg:gap-4">
-                                <div className="flex items-center gap-3 px-5 py-2 lg:px-6 lg:py-2.5 rounded-full bg-white/25 border border-white/30 min-w-[130px] lg:min-w-[150px]">
-                                  <Wind className="w-5 h-5 text-slate-400" />
-                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                              <div className="w-px h-24 lg:h-28 bg-slate-300/40 flex-shrink-0"></div>
+
+                              <div className="flex flex-col gap-3 lg:gap-4 flex-shrink-0">
+                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Wind className="w-4 h-4 lg:w-5 lg:h-5 text-slate-400 flex-shrink-0" />
+                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     {Math.round(weatherData.windSpeed)} km/h
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-3 px-5 py-2 lg:px-6 lg:py-2.5 rounded-full bg-white/25 border border-white/30 min-w-[130px] lg:min-w-[150px]">
-                                  <Droplets className="w-5 h-5 text-sky-400" />
-                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Droplets className="w-4 h-4 lg:w-5 lg:h-5 text-sky-400 flex-shrink-0" />
+                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     {weatherData.humidity}%
                                   </span>
                                 </div>
@@ -562,7 +564,7 @@ export default function App() {
                           </div>
 
                           <div className="flex-[0.4] flex flex-col justify-end w-full pt-2">
-                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
+                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] text-center">
                               <p className="text-base lg:text-lg text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
                                 {weatherData.condition.toLowerCase().includes('rain')
                                   ? `Rainy mood — we queued `
@@ -573,7 +575,7 @@ export default function App() {
                                       : `Perfect weather — we queued `
                                 }
                                 <span className="text-rose-500" style={{ fontWeight: 600 }}>
-                                  {`some tracks`}
+                                  {curatedSongs.length > 0 ? `${curatedSongs.length} curated tracks` : 'songs'}
                                 </span>
                                 {' '}for this weather.
                               </p>
@@ -582,29 +584,29 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          <div className="flex-[0.6] flex items-center justify-center w-full">
-                            <div className="flex items-center gap-4 lg:gap-8">
-                              <div className="flex flex-col items-center">
+                          <div className="flex-[0.6] flex items-center justify-center w-full px-2">
+                            <div className="flex items-center justify-center gap-6 lg:gap-10 w-full max-w-[90%] mx-auto">
+                              <div className="flex flex-col items-center flex-shrink-0">
                                 <span className="text-[5rem] lg:text-[6rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
                                   24°
                                 </span>
-                                <span className="text-xl lg:text-2xl text-slate-400 mt-2" style={{ fontWeight: 400 }}>
+                                <span className="text-xl lg:text-2xl text-slate-400 mt-2 text-center" style={{ fontWeight: 400 }}>
                                   rainy
                                 </span>
                               </div>
 
-                              <div className="w-px h-24 lg:h-32 bg-slate-300/40"></div>
+                              <div className="w-px h-24 lg:h-28 bg-slate-300/40 flex-shrink-0"></div>
 
-                              <div className="flex flex-col gap-3 lg:gap-4">
-                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Wind className="w-4 h-4 text-slate-400" />
-                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                              <div className="flex flex-col gap-3 lg:gap-4 flex-shrink-0">
+                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Wind className="w-4 h-4 lg:w-5 lg:h-5 text-slate-400 flex-shrink-0" />
+                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     12 km/h
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Droplets className="w-4 h-4 text-sky-400" />
-                                  <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
+                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
+                                  <Droplets className="w-4 h-4 lg:w-5 lg:h-5 text-sky-400 flex-shrink-0" />
+                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     84%
                                   </span>
                                 </div>
@@ -692,109 +694,111 @@ export default function App() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.3 }}
-                            className="flex-1 min-w-0 min-h-0 h-full relative rounded-2xl overflow-hidden border border-white/40 bg-white/20 backdrop-blur-sm flex flex-col"
+                            className="flex-1 min-w-0 min-h-0 h-full relative rounded-2xl overflow-hidden border border-white/40 bg-white/20 backdrop-blur-sm"
                           >
-                            <div className="absolute inset-0 z-0">
-                              <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10" />
-                              <img src={uploadedImage} alt="Uploaded" className="w-full h-full object-cover opacity-20 relative z-0" />
-                            </div>
+                            <div className="absolute inset-0 flex flex-col">
+                              <div className="absolute inset-0 z-0 pointer-events-none">
+                                <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10" />
+                                <img src={uploadedImage} alt="Uploaded" className="w-full h-full object-cover opacity-20 relative z-0" />
+                              </div>
 
-                            <div className="relative z-20 flex flex-col h-full w-full overflow-hidden">
-                              {isAnalyzing ? (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white/30 backdrop-blur-md">
-                                  <div className="relative w-16 h-16 mb-4">
-                                    <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                                      <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="3" />
-                                      <circle
-                                        cx="32" cy="32" r="28" fill="none"
-                                        stroke="url(#scanGrad)" strokeWidth="3"
-                                        strokeLinecap="round"
-                                        strokeDasharray={`${2 * Math.PI * 28}`}
-                                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - scanProgress / 100)}`}
-                                        className="transition-all duration-100"
-                                      />
-                                      <defs>
-                                        <linearGradient id="scanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                          <stop offset="0%" stopColor="#f43f5e" />
-                                          <stop offset="100%" stopColor="#f59e0b" />
-                                        </linearGradient>
-                                      </defs>
-                                    </svg>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      <Equalizer bars={4} active className="text-rose-400" />
+                              <div className="relative z-20 flex flex-col h-full w-full overflow-hidden">
+                                {isAnalyzing ? (
+                                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white/30 backdrop-blur-md">
+                                    <div className="relative w-16 h-16 mb-4">
+                                      <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                                        <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="3" />
+                                        <circle
+                                          cx="32" cy="32" r="28" fill="none"
+                                          stroke="url(#scanGrad)" strokeWidth="3"
+                                          strokeLinecap="round"
+                                          strokeDasharray={`${2 * Math.PI * 28}`}
+                                          strokeDashoffset={`${2 * Math.PI * 28 * (1 - scanProgress / 100)}`}
+                                          className="transition-all duration-100"
+                                        />
+                                        <defs>
+                                          <linearGradient id="scanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stopColor="#f43f5e" />
+                                            <stop offset="100%" stopColor="#f59e0b" />
+                                          </linearGradient>
+                                        </defs>
+                                      </svg>
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <Equalizer bars={4} active className="text-rose-400" />
+                                      </div>
                                     </div>
+                                    <p className="text-sm text-slate-700" style={{ fontWeight: 600 }}>Reading the vibe...</p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5">{scanProgress}% — detecting mood & color</p>
                                   </div>
-                                  <p className="text-sm text-slate-700" style={{ fontWeight: 600 }}>Reading the vibe...</p>
-                                  <p className="text-[11px] text-slate-400 mt-0.5">{scanProgress}% — detecting mood & color</p>
-                                </div>
-                              ) : apiError ? (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white/30 backdrop-blur-md">
-                                  <div className="text-red-500 mb-2">⚠️</div>
-                                  <p className="text-sm text-slate-700 font-semibold">Error</p>
-                                  <p className="text-[12px] text-slate-600 mt-2">{apiError}</p>
-                                  <button
-                                    onClick={() => { setUploadedImage(null); setScanResults(null); setApiError(null); }}
-                                    className="mt-4 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm hover:bg-rose-600 transition-colors"
-                                  >
-                                    Try again
-                                  </button>
-                                </div>
-                              ) : scanResults && scanResults.length > 0 ? (
-                                <>
-                                  <div className="p-3.5 border-b border-white/20 bg-white/30 backdrop-blur-md flex justify-between items-center flex-shrink-0">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-                                      <span className="text-[11px] text-slate-600 tracking-wide uppercase" style={{ fontWeight: 600 }}>
-                                        Matched · {scanResults.length} tracks
-                                      </span>
-                                    </div>
+                                ) : apiError ? (
+                                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white/30 backdrop-blur-md">
+                                    <div className="text-red-500 mb-2">⚠️</div>
+                                    <p className="text-sm text-slate-700 font-semibold">Error</p>
+                                    <p className="text-[12px] text-slate-600 mt-2">{apiError}</p>
                                     <button
-                                      onClick={() => { setUploadedImage(null); setScanResults(null); }}
-                                      className="text-[11px] text-slate-400 hover:text-rose-500 transition-colors"
-                                      style={{ fontWeight: 500 }}
+                                      onClick={() => { setUploadedImage(null); setScanResults(null); setApiError(null); }}
+                                      className="mt-4 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm hover:bg-rose-600 transition-colors"
                                     >
-                                      Reset
+                                      Try again
                                     </button>
                                   </div>
-                                  <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 scrollbar-hide relative">
-                                    {scanResults.map((song, i) => (
-                                      <motion.div
-                                        key={song.id}
-                                        initial={{ opacity: 0, x: 10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: i * 0.05 }}
-                                        onClick={() => playTrack(song, scanResults)}
-                                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 transition-colors cursor-pointer group"
+                                ) : scanResults && scanResults.length > 0 ? (
+                                  <>
+                                    <div className="p-3.5 border-b border-white/20 bg-white/30 backdrop-blur-md flex justify-between items-center flex-shrink-0">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                                        <span className="text-[11px] text-slate-600 tracking-wide uppercase" style={{ fontWeight: 600 }}>
+                                          Matched · {scanResults.length} tracks
+                                        </span>
+                                      </div>
+                                      <button
+                                        onClick={() => { setUploadedImage(null); setScanResults(null); }}
+                                        className="text-[11px] text-slate-400 hover:text-rose-500 transition-colors"
+                                        style={{ fontWeight: 500 }}
                                       >
-                                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-rose-100 to-amber-50 flex items-center justify-center shadow-sm border border-white/50 flex-shrink-0 overflow-hidden">
-                                          {song.artwork ? (
-                                            <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <span className="text-[10px] text-slate-400" style={{ fontWeight: 600 }}>{String(i + 1).padStart(2, '0')}</span>
-                                          )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <h4 className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{song.title}</h4>
-                                          <p className="text-[12px] text-rose-500 truncate" style={{ fontWeight: 600 }}>{song.artist}</p>
-                                        </div>
-                                        {currentTrack?.id === song.id && (
-                                          <div className="flex-shrink-0">
-                                            {isAudioPlaying ? (
-                                              <Equalizer bars={3} active className="text-rose-400" />
+                                        Reset
+                                      </button>
+                                    </div>
+                                    <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 scrollbar-hide relative">
+                                      {scanResults.map((song, i) => (
+                                        <motion.div
+                                          key={song.id}
+                                          initial={{ opacity: 0, x: 10 }}
+                                          animate={{ opacity: 1, x: 0 }}
+                                          transition={{ delay: i * 0.05 }}
+                                          onClick={() => playTrack(song, scanResults)}
+                                          className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 transition-colors cursor-pointer group"
+                                        >
+                                          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-rose-100 to-amber-50 flex items-center justify-center shadow-sm border border-white/50 flex-shrink-0 overflow-hidden">
+                                            {song.artwork ? (
+                                              <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover" />
                                             ) : (
-                                              <Play className="w-4 h-4 text-rose-400" />
+                                              <span className="text-[10px] text-slate-400" style={{ fontWeight: 600 }}>{String(i + 1).padStart(2, '0')}</span>
                                             )}
                                           </div>
-                                        )}
-                                      </motion.div>
-                                    ))}
+                                          <div className="flex-1 min-w-0">
+                                            <h4 className="text-[13px] text-slate-800 truncate" style={{ fontWeight: 600 }}>{song.title}</h4>
+                                            <p className="text-[12px] text-rose-500 truncate" style={{ fontWeight: 600 }}>{song.artist}</p>
+                                          </div>
+                                          {currentTrack?.id === song.id && (
+                                            <div className="flex-shrink-0">
+                                              {isAudioPlaying ? (
+                                                <Equalizer bars={3} active className="text-rose-400" />
+                                              ) : (
+                                                <Play className="w-4 h-4 text-rose-400" />
+                                              )}
+                                            </div>
+                                          )}
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex-1 flex items-center justify-center bg-white/30 backdrop-blur-md">
+                                    <p className="text-[12px] text-slate-400" style={{ fontWeight: 500 }}>No songs found</p>
                                   </div>
-                                </>
-                              ) : (
-                                <div className="flex-1 flex items-center justify-center bg-white/30 backdrop-blur-md">
-                                  <p className="text-[12px] text-slate-400" style={{ fontWeight: 500 }}>No songs found</p>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </motion.div>
                         )}
