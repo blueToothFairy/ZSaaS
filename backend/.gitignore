@@ -1,6 +1,8 @@
 # CLIP Model
 *.onnx
 
+dist/
+
 # Dependencies
 /node_modules
 /.pnp
