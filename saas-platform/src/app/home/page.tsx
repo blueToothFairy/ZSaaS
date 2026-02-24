@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react';
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser, useClerk } from "@clerk/nextjs";
 import axios from 'axios';
 import {
   CloudRain, Cloud, CloudSnow, Sun, CloudDrizzle, CloudLightning, Eye,
@@ -48,6 +48,7 @@ interface TodayVibeResponse {
     genres: string[];
     mood: string;
     reasoning: string;
+    session: string;
   };
 }
 
@@ -115,6 +116,8 @@ function Equalizer({ bars = 5, active = true, className = '' }: { bars?: number;
 
 export default function App() {
   const { getToken } = useAuth();
+  const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
 
   const [activeNav, setActiveNav] = useState('home');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -129,7 +132,8 @@ export default function App() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [curatedSongs, setCuratedSongs] = useState<Song[]>([]);
   const [isLoadingWeather, setIsLoadingWeather] = useState(true);
-  
+  const [session, setSession] = useState<string>('morning');
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentPlaylist, setCurrentPlaylist] = useState<Song[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Song | null>(null);
@@ -143,10 +147,11 @@ export default function App() {
       try {
         setIsLoadingWeather(true);
         const response = await axios.get<TodayVibeResponse>('/api/vibe-scan/today-vibe');
-        
+
         if (response.data.success) {
           setWeatherData(response.data.data.weather);
           setCuratedSongs(response.data.data.songs);
+          setSession(response.data.data.session);
         }
       } catch (error: any) {
       } finally {
@@ -298,7 +303,7 @@ export default function App() {
     if (file) {
       try {
         setApiError(null);
-        
+
         const reader = new FileReader();
         reader.onloadend = async () => {
           setUploadedImage(reader.result as string);
@@ -341,7 +346,7 @@ export default function App() {
           }
         };
         reader.readAsDataURL(file);
-        
+
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -356,11 +361,13 @@ export default function App() {
   };
 
   const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return { text: 'Good morning', mood: 'sunrise energy' };
-    if (hour < 17) return { text: 'Good afternoon', mood: 'golden hour' };
-    if (hour < 21) return { text: 'Good evening', mood: 'twilight feels' };
-    return { text: 'Late night', mood: 'midnight thoughts' };
+    const sessionTexts: { [key: string]: { text: string; mood: string } } = {
+      morning: { text: 'Good morning', mood: 'sunrise energy' },
+      afternoon: { text: 'Good afternoon', mood: 'golden hour' },
+      evening: { text: 'Good evening', mood: 'twilight feels' },
+      night: { text: 'Late night', mood: 'midnight thoughts' },
+    };
+    return sessionTexts[session] || { text: 'Good morning', mood: 'sunrise energy' };
   };
 
   const greeting = getGreeting();
@@ -421,8 +428,8 @@ export default function App() {
                   key={item.id}
                   onClick={() => setActiveNav(item.id)}
                   className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 ${activeNav === item.id
-                      ? 'bg-white/40 text-slate-900 shadow-sm border border-white/50'
-                      : 'hover:bg-white/15 text-slate-500 hover:text-slate-700'
+                    ? 'bg-white/40 text-slate-900 shadow-sm border border-white/50'
+                    : 'hover:bg-white/15 text-slate-500 hover:text-slate-700'
                     }`}
                   style={{ fontWeight: activeNav === item.id ? 600 : 400 }}
                 >
@@ -431,6 +438,19 @@ export default function App() {
                 </button>
               ))}
             </nav>
+
+            <div className="mt-auto space-y-4">
+              
+
+              <div className="pt-4 border-t border-white/15 space-y-1">
+                <button className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl hover:bg-white/15 text-slate-500 transition-colors text-[14px]">
+                  <Settings className="w-[18px] h-[18px]" /><span>Settings</span>
+                </button>
+                <button onClick={() => signOut({ redirectUrl: '/' })} className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl hover:bg-red-50/40 text-slate-500 hover:text-red-500 transition-colors text-[14px]">
+                  <LogOut className="w-[18px] h-[18px]" /><span>Logout</span>
+                </button>
+              </div>
+            </div>
           </div>
         </motion.aside>
 
@@ -465,7 +485,7 @@ export default function App() {
                     style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', fontWeight: 400 }}
                     className="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500"
                   >
-                    Alex
+                    {!isLoaded ? '...' : user?.firstName || 'Guest'}
                   </span>
                 </h2>
               </div>
@@ -505,10 +525,9 @@ export default function App() {
 
                   <div className="relative z-10 flex flex-col h-full">
                     <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                      <span className="text-[12px] tracking-[0.15em] uppercase text-slate-400" style={{ fontWeight: 600 }}>
+                      <span className="text-[1rem] tracking-[0.15em] uppercase text-slate-400" style={{ fontWeight: 600 }}>
                         Weather · Playlist
                       </span>
-                      <CloudRain className="w-5 h-5 text-sky-400" />
                     </div>
 
                     <div className="flex-1 flex flex-col min-h-0">
@@ -516,26 +535,24 @@ export default function App() {
                         <>
                           <div className="flex-[0.6] flex items-center justify-center w-full">
                             <div className="flex items-center gap-4 lg:gap-8">
-                              <div className="flex flex-col items-center">
+                              <div className="flex flex-col items-center relative translate-x-6 lg:translate-x-6">
                                 <span className="text-[5rem] lg:text-[6rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
-                                  {weatherData.temperature}°
+                                  {weatherData ? weatherData.temperature : '24'}°
                                 </span>
                                 <span className="text-xl lg:text-2xl text-slate-400 mt-2" style={{ fontWeight: 400 }}>
-                                  {weatherData.condition.toLowerCase()}
+                                  {weatherData ? weatherData.condition.toLowerCase() : 'rainy'}
                                 </span>
                               </div>
 
-                              <div className="w-px h-24 lg:h-32 bg-slate-300/40"></div>
-
                               <div className="flex flex-col gap-3 lg:gap-4">
-                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Wind className="w-4 h-4 text-slate-400" />
+                                <div className="flex items-center gap-3 px-5 py-2 lg:px-6 lg:py-2.5 rounded-full bg-white/25 border border-white/30 min-w-[130px] lg:min-w-[150px]">
+                                  <Wind className="w-5 h-5 text-slate-400" />
                                   <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
                                     {Math.round(weatherData.windSpeed)} km/h
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Droplets className="w-4 h-4 text-sky-400" />
+                                <div className="flex items-center gap-3 px-5 py-2 lg:px-6 lg:py-2.5 rounded-full bg-white/25 border border-white/30 min-w-[130px] lg:min-w-[150px]">
+                                  <Droplets className="w-5 h-5 text-sky-400" />
                                   <span className="text-sm lg:text-base text-slate-600" style={{ fontWeight: 500 }}>
                                     {weatherData.humidity}%
                                   </span>
@@ -545,18 +562,18 @@ export default function App() {
                           </div>
 
                           <div className="flex-[0.4] flex flex-col justify-end w-full pt-2">
-                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center text-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
+                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
                               <p className="text-base lg:text-lg text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
                                 {weatherData.condition.toLowerCase().includes('rain')
                                   ? `Rainy mood — we queued `
                                   : weatherData.condition.toLowerCase().includes('snow')
-                                  ? `Snowy vibes — we queued `
-                                  : weatherData.condition.toLowerCase().includes('clear') || weatherData.condition.toLowerCase().includes('sunny')
-                                  ? `Sunny day — we queued `
-                                  : `Perfect weather — we queued `
+                                    ? `Snowy vibes — we queued `
+                                    : weatherData.condition.toLowerCase().includes('clear') || weatherData.condition.toLowerCase().includes('sunny')
+                                      ? `Sunny day — we queued `
+                                      : `Perfect weather — we queued `
                                 }
                                 <span className="text-rose-500" style={{ fontWeight: 600 }}>
-                                  {curatedSongs.length > 0 ? `${curatedSongs.length} curated tracks` : 'songs'}
+                                  {`some tracks`}
                                 </span>
                                 {' '}for this weather.
                               </p>
@@ -624,7 +641,7 @@ export default function App() {
                       <div>
                         <div className="flex items-center gap-2 mb-1.5">
                           <Sparkles className="w-4 h-4 text-amber-500" />
-                          <span className="text-[11px] tracking-[0.15em] uppercase text-slate-400" style={{ fontWeight: 600 }}>AI Vibe Scan</span>
+                          <span className="text-[1rem] tracking-[0.15em] uppercase text-slate-400" style={{ fontWeight: 600 }}>AI Vibe Scan</span>
                         </div>
                         <p className="text-[13px] text-slate-500 max-w-xs" style={{ fontWeight: 400 }}>
                           Drop a photo. We&apos;ll read the vibe and match it to music.
@@ -632,15 +649,13 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${uploadedImage ? 'gap-5' : ''}`}>
+                    <div className={`flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden w-full ${uploadedImage ? 'gap-5' : ''}`}>
                       <motion.button
                         layout
-                        animate={{
-                          flex: uploadedImage ? 0.4 : 1,
-                        }}
-                        transition={{ duration: 0.3 }}
                         onClick={() => fileInputRef.current?.click()}
-                        className="group relative isolate min-h-[150px] lg:min-h-0 h-full w-full lg:w-auto"
+                        className={`group relative isolate h-full min-h-[120px] lg:min-h-0 flex-shrink-0 transition-all duration-300 ${
+                          uploadedImage ? 'lg:w-[35%] w-full' : 'flex-1 w-full'
+                        }`}
                       >
                         <div className="absolute inset-0 bg-slate-200/40 rounded-2xl transform translate-y-2.5 blur-[2px] transition-transform group-hover:translate-y-3 group-active:translate-y-0.5" />
 
@@ -669,25 +684,24 @@ export default function App() {
                         </div>
                       </motion.button>
 
-                      <motion.div
-                        layout
-                        animate={{
-                          flex: uploadedImage ? 0.6 : 0,
-                        }}
-                        transition={{ duration: 0.3 }}
-                        className="relative overflow-hidden h-full min-h-0 w-full lg:w-auto"
-                      >
-                        <AnimatePresence mode="wait">
-                          {uploadedImage ? (
-                            <motion.div
-                              key="result"
-                              initial={{ opacity: 0, x: 15 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              className="absolute inset-0 rounded-2xl overflow-hidden border border-white/40 bg-white/20 backdrop-blur-sm flex flex-col"
-                            >
+                      <AnimatePresence mode="wait">
+                        {uploadedImage && (
+                          <motion.div
+                            layout
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex-1 min-w-0 min-h-0 h-full relative rounded-2xl overflow-hidden border border-white/40 bg-white/20 backdrop-blur-sm flex flex-col"
+                          >
+                            <div className="absolute inset-0 z-0">
+                              <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10" />
+                              <img src={uploadedImage} alt="Uploaded" className="w-full h-full object-cover opacity-20 relative z-0" />
+                            </div>
+
+                            <div className="relative z-20 flex flex-col h-full w-full overflow-hidden">
                               {isAnalyzing ? (
-                                <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white/30 backdrop-blur-md">
                                   <div className="relative w-16 h-16 mb-4">
                                     <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
                                       <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="3" />
@@ -714,7 +728,7 @@ export default function App() {
                                   <p className="text-[11px] text-slate-400 mt-0.5">{scanProgress}% — detecting mood & color</p>
                                 </div>
                               ) : apiError ? (
-                                <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white/30 backdrop-blur-md">
                                   <div className="text-red-500 mb-2">⚠️</div>
                                   <p className="text-sm text-slate-700 font-semibold">Error</p>
                                   <p className="text-[12px] text-slate-600 mt-2">{apiError}</p>
@@ -726,7 +740,7 @@ export default function App() {
                                   </button>
                                 </div>
                               ) : scanResults && scanResults.length > 0 ? (
-                                <div className="h-full flex flex-col relative z-20">
+                                <>
                                   <div className="p-3.5 border-b border-white/20 bg-white/30 backdrop-blur-md flex justify-between items-center flex-shrink-0">
                                     <div className="flex items-center gap-2">
                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
@@ -742,7 +756,7 @@ export default function App() {
                                       Reset
                                     </button>
                                   </div>
-                                  <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 scrollbar-hide">
+                                  <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 scrollbar-hide relative">
                                     {scanResults.map((song, i) => (
                                       <motion.div
                                         key={song.id}
@@ -775,21 +789,16 @@ export default function App() {
                                       </motion.div>
                                     ))}
                                   </div>
-                                </div>
+                                </>
                               ) : (
-                                <div className="h-full flex items-center justify-center relative z-20">
+                                <div className="flex-1 flex items-center justify-center bg-white/30 backdrop-blur-md">
                                   <p className="text-[12px] text-slate-400" style={{ fontWeight: 500 }}>No songs found</p>
                                 </div>
                               )}
-
-                              <div className="absolute inset-0 z-0">
-                                <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10" />
-                                <img src={uploadedImage} alt="Uploaded" className="w-full h-full object-cover opacity-20 relative z-0" />
-                              </div>
-                            </motion.div>
-                          ) : null}
-                        </AnimatePresence>
-                      </motion.div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 </div>
@@ -824,8 +833,8 @@ export default function App() {
               </div>
 
               {curatedSongs.length > 0 && (
-                <div className="grid grid-cols-1 gap-4 mb-5">
-                  {curatedSongs.slice(0, 6).map((song, index) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-5">
+                  {curatedSongs.map((song, index) => (
                     <motion.div
                       key={song.id}
                       initial={{ opacity: 0, y: 10 }}
@@ -967,10 +976,10 @@ export default function App() {
                 className="w-11 h-11 rounded-lg overflow-hidden shadow-md flex-shrink-0 vinyl-spin"
                 style={{ animationPlayState: isAudioPlaying ? 'running' : 'paused' }}
               >
-                <ImageWithFallback 
-                  src={currentTrack?.artwork || nowPlayingData.image} 
-                  alt={currentTrack?.title || nowPlayingData.title} 
-                  className="w-full h-full object-cover" 
+                <ImageWithFallback
+                  src={currentTrack?.artwork || nowPlayingData.image}
+                  alt={currentTrack?.title || nowPlayingData.title}
+                  className="w-full h-full object-cover"
                 />
               </div>
               <div className="min-w-0">
@@ -1058,10 +1067,10 @@ export default function App() {
                 className="w-9 h-9 rounded-lg overflow-hidden shadow-sm flex-shrink-0 vinyl-spin"
                 style={{ animationPlayState: isAudioPlaying ? 'running' : 'paused' }}
               >
-                <ImageWithFallback 
-                  src={currentTrack.artwork} 
-                  alt={currentTrack.title} 
-                  className="w-full h-full object-cover" 
+                <ImageWithFallback
+                  src={currentTrack.artwork}
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex-1 min-w-0">
@@ -1112,8 +1121,8 @@ export default function App() {
                 key={item.id}
                 onClick={() => setActiveNav(item.id)}
                 className={`flex flex-col items-center gap-0.5 p-2.5 rounded-xl transition-all w-full relative ${activeNav === item.id
-                    ? 'text-rose-500'
-                    : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-rose-500'
+                  : 'text-slate-400 hover:text-slate-600'
                   }`}
               >
                 {activeNav === item.id && (

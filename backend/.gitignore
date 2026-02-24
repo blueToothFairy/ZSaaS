@@ -1,0 +1,53 @@
+# CLIP Model
+*.onnx
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js build output
+/.next/
+/out/
+
+# Production build artifacts (nếu bạn tùy chỉnh output dir)
+/build
+
+# Debug logs and error logs
+/debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment variables (QUAN TRỌNG: Không bao giờ commit secret keys)
+.env*.local
+.env.production
+.env.development
+.env.test
+
+# Lưu ý: Thông thường .env chứa các biến public mặc định có thể commit, 
+# nhưng nếu bạn để secret trong .env thì hãy uncomment dòng dưới đây:
+# .env
+
+# Vercel (nếu deploy lên Vercel)
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Editor / IDE settings (Tùy chọn, nên ignore để tránh conflict settings cá nhân)
+.ds_store
+*.pem
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS metadata
+.DS_Store
+Thumbs.db

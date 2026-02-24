@@ -10,6 +10,7 @@ export default interface IWeatherGenreService {
     temperature: number,
     weatherCode: number,
     humidity: number,
-    condition: string
+    condition: string,
+    hour: number
   ): WeatherGenreMatch;
 }

@@ -49,12 +49,20 @@ export default class VibeScannerService {
     const weather = await this.weatherService.getCurrentWeather();
     console.log("Current weather:", weather);
 
-    // Match weather to genres
+    // Extract hour from currentTime (format: YYYY-MM-DDTHH:MM)
+    const time = weather.currentTime.split('T')[1];
+    const hour = parseInt(time.split(':')[0], 10);
+
+    // Determine session based on hour
+    const session = this.getSessionFromHour(hour);
+
+    // Match weather to genres (now includes time-based matching)
     const weatherGenreMatch = this.weatherGenreService.matchGenreToWeather(
       weather.temperature,
       weather.weatherCode,
       weather.humidity,
-      weather.condition
+      weather.condition,
+      hour
     );
 
     console.log("Weather genre match:", weatherGenreMatch);
@@ -75,6 +83,19 @@ export default class VibeScannerService {
       genres: weatherGenreMatch.genres,
       mood: weatherGenreMatch.mood,
       reasoning: weatherGenreMatch.reasoning,
+      session,
     };
+  }
+
+  private getSessionFromHour(hour: number): string {
+    if (hour >= 5 && hour < 12) {
+      return 'morning';
+    } else if (hour >= 12 && hour < 18) {
+      return 'afternoon';
+    } else if (hour >= 18 && hour < 24) {
+      return 'evening';
+    } else {
+      return 'night';
+    }
   }
 }

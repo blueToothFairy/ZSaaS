@@ -4,6 +4,8 @@ export interface WeatherData {
   humidity: number;
   windSpeed: number;
   condition: string;
+  timezone: string;
+  currentTime: string;
   location: {
     latitude: number;
     longitude: number;

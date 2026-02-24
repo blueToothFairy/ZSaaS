@@ -3,18 +3,24 @@ import IWeatherGenreService, { WeatherGenreMatch } from '../interfaces/weather-g
 export default class WeatherGenreService implements IWeatherGenreService {
   /**
    * Maps weather conditions to music genres and keywords
-   * Considers temperature, weather condition, and humidity
+   * Considers temperature, weather condition, humidity, and time of day
    */
   matchGenreToWeather(
     temperature: number,
     weatherCode: number,
     humidity: number,
-    condition: string
+    condition: string,
+    hour: number
   ): WeatherGenreMatch {
     const genres: string[] = [];
     const keywords: string[] = [];
     let mood = '';
     let reasoning = '';
+
+    // Analyze time of day
+    const timeAnalysis = this.analyzeTimeOfDay(hour);
+    genres.push(...timeAnalysis.genres);
+    keywords.push(...timeAnalysis.keywords);
 
     // Analyze temperature
     const tempAnalysis = this.analyzeTemperature(temperature);
@@ -36,7 +42,7 @@ export default class WeatherGenreService implements IWeatherGenreService {
     const finalKeywords = [...new Set(keywords)];
 
     // Generate reasoning
-    reasoning = this.generateReasoning(condition, temperature, humidity);
+    reasoning = this.generateReasoning(condition, temperature, humidity, hour);
 
     return {
       genres: finalGenres,
@@ -44,6 +50,34 @@ export default class WeatherGenreService implements IWeatherGenreService {
       mood,
       reasoning,
     };
+  }
+
+  private analyzeTimeOfDay(hour: number): { genres: string[]; keywords: string[] } {
+    const genres: string[] = [];
+    const keywords: string[] = [];
+
+    // Morning (5-11)
+    if (hour >= 5 && hour < 12) {
+      genres.push('lo-fi', 'chillhop', 'indie pop', 'acoustic');
+      keywords.push('morning', 'sunrise', 'fresh', 'energizing', 'coffee');
+    }
+    // Afternoon (12-17)
+    else if (hour >= 12 && hour < 18) {
+      genres.push('pop', 'indie pop', 'electronic', 'funk', 'soul');
+      keywords.push('afternoon', 'golden hour', 'uplifting', 'productive', 'sunny');
+    }
+    // Evening (18-23)
+    else if (hour >= 18 && hour < 24) {
+      genres.push('alternative', 'indie', 'electronic', 'chill', 'soul');
+      keywords.push('evening', 'sunset', 'mellow', 'relaxing', 'twilight');
+    }
+    // Night (0-4)
+    else {
+      genres.push('ambient', 'lo-fi', 'post-rock', 'jazz', 'chillwave');
+      keywords.push('night', 'midnight', 'atmospheric', 'introspective', 'sleepy');
+    }
+
+    return { genres, keywords };
   }
 
   private analyzeTemperature(temp: number): { genres: string[]; keywords: string[] } {
@@ -150,7 +184,7 @@ export default class WeatherGenreService implements IWeatherGenreService {
     return { keywords };
   }
 
-  private generateReasoning(condition: string, temperature: number, humidity: number): string {
+  private generateReasoning(condition: string, temperature: number, humidity: number, hour: number): string {
     const tempDesc =
       temperature < 10
         ? 'chilly'
@@ -160,6 +194,15 @@ export default class WeatherGenreService implements IWeatherGenreService {
             ? 'pleasant'
             : 'warm';
 
-    return `Based on ${condition} conditions (${temperature}°, ${humidity}% humidity), we selected songs that match this ${tempDesc} weather vibe.`;
+    const timeDesc =
+      hour >= 5 && hour < 12
+        ? 'morning'
+        : hour >= 12 && hour < 18
+          ? 'afternoon'
+          : hour >= 18 && hour < 24
+            ? 'evening'
+            : 'night';
+
+    return `Based on ${timeDesc} ${condition} conditions (${temperature}°, ${humidity}% humidity), we selected songs that match this ${tempDesc} weather vibe.`;
   }
 }

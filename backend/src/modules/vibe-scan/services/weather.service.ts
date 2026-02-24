@@ -91,6 +91,8 @@ export default class WeatherService implements IWeatherService {
 
       const current = response.data.current;
       const condition = this.getWeatherCondition(current.weather_code);
+      const timezone = response.data.timezone;
+      const currentTime = current.time;
 
       return {
         temperature: Math.round(current.temperature_2m),
@@ -98,9 +100,11 @@ export default class WeatherService implements IWeatherService {
         humidity: current.relative_humidity_2m,
         windSpeed: current.wind_speed_10m,
         condition,
+        timezone,
+        currentTime,
       };
     } catch (error) {
-      console.error('Error getting weather data:', error);
+      console.log('Error getting weather data:', error);
       throw new Error('Failed to fetch weather data from Open-Meteo');
     }
   }
