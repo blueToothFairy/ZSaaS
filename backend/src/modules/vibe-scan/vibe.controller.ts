@@ -10,7 +10,7 @@ export default class VibeScannerController {
 
   async getSongs(req: ClerkRequest, res: Response): Promise<void> {
     console.log('get songs');
-    const userId = req.auth().userId;
+    const userId = req.auth.userId;
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
       return;

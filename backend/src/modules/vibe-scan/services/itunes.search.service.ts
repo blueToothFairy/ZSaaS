@@ -121,7 +121,7 @@ export default class ITunesSearchService implements ISongSearch {
         externalUrl: result.trackViewUrl,
         duration: result.trackTimeMillis ? Math.floor(result.trackTimeMillis / 1000) : undefined,
         releaseDate: result.releaseDate,
-      }));
+      } as Song));
   }
 
   /**

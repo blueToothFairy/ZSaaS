@@ -24,7 +24,7 @@ export default class VibeScannerService {
     });
 
     // Extract vibes from image
-    const vibes = await this.vibeService.extractVibes(formData);
+    const vibes = await this.vibeService.extractVibes(formData as any);
     console.log("Extracted vibes:", vibes);
 
     if (!vibes || vibes.length === 0) {
@@ -50,8 +50,8 @@ export default class VibeScannerService {
     console.log("Current weather:", weather);
 
     // Extract hour from currentTime (format: YYYY-MM-DDTHH:MM)
-    const time = weather.currentTime.split('T')[1];
-    const hour = parseInt(time.split(':')[0], 10);
+    const time = weather.currentTime.split('T')[1] || '11:11';
+    const hour = parseInt(time.split(':')[0]!, 10);
 
     // Determine session based on hour
     const session = this.getSessionFromHour(hour);

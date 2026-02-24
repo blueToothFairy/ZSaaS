@@ -1,7 +1,7 @@
-import AIRepositoty from '../interfaces/ai-output-repo.interface';
+import AIRepositoty from '../interfaces/ai-output-repo.interface.js';
 import { Knex } from 'knex';
 
-import { CreateAIOutputDTO, AIOutputDTO } from '../dto/ai-repo';
+import { CreateAIOutputDTO, AIOutputDTO } from '../dto/ai-repo.js';
 
 export default class KnexAIOutputsRepository implements AIRepositoty {
   private readonly TABLE_NAME="ai_outputs";
