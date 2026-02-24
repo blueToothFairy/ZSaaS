@@ -376,8 +376,8 @@ export default function App() {
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
-    { id: 'search', icon: Search, label: 'Search' },
-    { id: 'profile', icon: User, label: 'Profile' },
+    // { id: 'search', icon: Search, label: 'Search' },
+    // { id: 'profile', icon: User, label: 'Profile' },
   ];
 
   return (
@@ -443,9 +443,9 @@ export default function App() {
               
 
               <div className="pt-4 border-t border-white/15 space-y-1">
-                <button className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl hover:bg-white/15 text-slate-500 transition-colors text-[14px]">
+                {/* <button className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl hover:bg-white/15 text-slate-500 transition-colors text-[14px]">
                   <Settings className="w-[18px] h-[18px]" /><span>Settings</span>
-                </button>
+                </button> */}
                 <button onClick={() => signOut({ redirectUrl: '/' })} className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl hover:bg-red-50/40 text-slate-500 hover:text-red-500 transition-colors text-[14px]">
                   <LogOut className="w-[18px] h-[18px]" /><span>Logout</span>
                 </button>
@@ -530,32 +530,31 @@ export default function App() {
                       </span>
                     </div>
 
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 flex flex-col min-h-0 mt-2">
                       {weatherData ? (
                         <>
-                          <div className="flex-[0.6] flex items-center justify-center w-full px-2">
-                            <div className="flex items-center justify-center gap-6 lg:gap-10 w-full max-w-[90%] mx-auto">
-                              <div className="flex flex-col items-center flex-shrink-0">
-                                <span className="text-[5rem] lg:text-[6rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
+                          <div className="flex-[0.55] flex items-center justify-center w-full">
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex flex-col items-center flex-1 min-w-0">
+                                <span className="text-[3.5rem] xl:text-[4.5rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
                                   {weatherData.temperature}°
                                 </span>
-                                <span className="text-xl lg:text-2xl text-slate-400 mt-2 text-center" style={{ fontWeight: 400 }}>
+                                <span className="text-lg xl:text-xl text-slate-400 mt-2 text-center truncate w-full px-1" style={{ fontWeight: 400 }}>
                                   {weatherData.condition.toLowerCase()}
                                 </span>
                               </div>
 
-                              <div className="w-px h-24 lg:h-28 bg-slate-300/40 flex-shrink-0"></div>
 
-                              <div className="flex flex-col gap-3 lg:gap-4 flex-shrink-0">
-                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Wind className="w-4 h-4 lg:w-5 lg:h-5 text-slate-400 flex-shrink-0" />
-                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
+                              <div className="flex flex-col gap-3 flex-1 min-w-0 items-center">
+                                <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-full bg-white/25 border border-white/30 w-full max-w-[120px] xl:max-w-[130px]">
+                                  <Wind className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                  <span className="text-[13px] xl:text-sm text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     {Math.round(weatherData.windSpeed)} km/h
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Droplets className="w-4 h-4 lg:w-5 lg:h-5 text-sky-400 flex-shrink-0" />
-                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
+                                <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-full bg-white/25 border border-white/30 w-full max-w-[120px] xl:max-w-[130px]">
+                                  <Droplets className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                                  <span className="text-[13px] xl:text-sm text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     {weatherData.humidity}%
                                   </span>
                                 </div>
@@ -563,9 +562,9 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="flex-[0.4] flex flex-col justify-end w-full pt-2">
-                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] text-center">
-                              <p className="text-base lg:text-lg text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
+                          <div className="flex-[0.45] flex flex-col justify-end w-full pt-4">
+                            <div className="h-full w-full p-4 xl:p-5 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center text-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
+                              <p className="text-sm xl:text-base text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
                                 {weatherData.condition.toLowerCase().includes('rain')
                                   ? `Rainy mood — we queued `
                                   : weatherData.condition.toLowerCase().includes('snow')
@@ -575,7 +574,7 @@ export default function App() {
                                       : `Perfect weather — we queued `
                                 }
                                 <span className="text-rose-500" style={{ fontWeight: 600 }}>
-                                  {curatedSongs.length > 0 ? `${curatedSongs.length} curated tracks` : 'songs'}
+                                  {curatedSongs.length > 0 ? `${curatedSongs.length} curated tracks` : 'some tracks'}
                                 </span>
                                 {' '}for this weather.
                               </p>
@@ -584,29 +583,29 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          <div className="flex-[0.6] flex items-center justify-center w-full px-2">
-                            <div className="flex items-center justify-center gap-6 lg:gap-10 w-full max-w-[90%] mx-auto">
-                              <div className="flex flex-col items-center flex-shrink-0">
-                                <span className="text-[5rem] lg:text-[6rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
+                          <div className="flex-[0.55] flex items-center justify-center w-full">
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex flex-col items-center flex-1 min-w-0">
+                                <span className="text-[4.5rem] xl:text-[5.5rem] tracking-tighter text-slate-800 leading-none" style={{ fontWeight: 700, fontFamily: "'Instrument Serif', serif" }}>
                                   24°
                                 </span>
-                                <span className="text-xl lg:text-2xl text-slate-400 mt-2 text-center" style={{ fontWeight: 400 }}>
+                                <span className="text-lg xl:text-xl text-slate-400 mt-2 text-center truncate w-full px-1" style={{ fontWeight: 400 }}>
                                   rainy
                                 </span>
                               </div>
 
-                              <div className="w-px h-24 lg:h-28 bg-slate-300/40 flex-shrink-0"></div>
+                              <div className="w-px h-24 bg-slate-300/40 flex-shrink-0 mx-2"></div>
 
-                              <div className="flex flex-col gap-3 lg:gap-4 flex-shrink-0">
-                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Wind className="w-4 h-4 lg:w-5 lg:h-5 text-slate-400 flex-shrink-0" />
-                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
+                              <div className="flex flex-col gap-3 flex-1 min-w-0 items-center">
+                                <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-full bg-white/25 border border-white/30 w-full max-w-[120px] xl:max-w-[130px]">
+                                  <Wind className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                  <span className="text-[13px] xl:text-sm text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     12 km/h
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-3 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full bg-white/25 border border-white/30">
-                                  <Droplets className="w-4 h-4 lg:w-5 lg:h-5 text-sky-400 flex-shrink-0" />
-                                  <span className="text-sm lg:text-base text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
+                                <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-full bg-white/25 border border-white/30 w-full max-w-[120px] xl:max-w-[130px]">
+                                  <Droplets className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                                  <span className="text-[13px] xl:text-sm text-slate-600 whitespace-nowrap" style={{ fontWeight: 500 }}>
                                     84%
                                   </span>
                                 </div>
@@ -614,9 +613,9 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="flex-[0.4] flex flex-col justify-end w-full pt-2">
-                            <div className="h-full w-full p-5 lg:p-6 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center text-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
-                              <p className="text-base lg:text-lg text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
+                          <div className="flex-[0.45] flex flex-col justify-end w-full pt-4">
+                            <div className="h-full w-full p-4 xl:p-5 rounded-3xl bg-gradient-to-r from-sky-50/60 to-rose-50/60 border border-white/30 flex items-center justify-center text-center shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)]">
+                              <p className="text-sm xl:text-base text-slate-700 leading-relaxed" style={{ fontWeight: 500 }}>
                                 Rainy day, jazz way — we queued{' '}
                                 <span className="text-rose-500" style={{ fontWeight: 600 }}>lo-fi & soft piano</span> for this weather.
                               </p>
