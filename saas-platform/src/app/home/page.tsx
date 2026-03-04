@@ -1,24 +1,35 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, SetStateAction } from 'react';
 import { useAuth, useUser, useClerk } from "@clerk/nextjs";
 import axios from 'axios';
 import {
-  CloudRain, Cloud, CloudSnow, Sun, CloudDrizzle, CloudLightning,
-  Camera, Home, Search, User, Sparkles, Wind, Droplets, Settings, LogOut,
-  Play, Pause, SkipForward, SkipBack, Disc3, Menu, X, AlertCircle, Loader
+  CloudRain,
+  Camera, Home, User, Sparkles, Wind, Droplets, Settings, LogOut,
+  Play, Pause, SkipForward, SkipBack, Disc3, Menu, X, AlertCircle, Loader, Heart,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { compressImage } from '@/lib/utils/image-compressor';
 
-interface Song { id: string; title: string; artist: string; album: string; artwork: string; previewUrl?: string; duration?: number; }
+// Interfaces
+interface Song { id: string; title: string; artist: string; album: string; artwork: string; previewUrl?: string; duration?: number; externalUrl?: string; }
 interface WeatherData { temperature: number; weatherCode: number; humidity: number; windSpeed: number; condition: string; }
-interface TodayVibeResponse { success: boolean; data: { weather: WeatherData; songs: Song[]; session: string; }; }
+interface Favorite { song_id: string; title: string; artist: string; album: string; artwork: string; preview_url?: string; external_url?: string; }
+interface FavoritesResponse { success: boolean; data: { favorites: Favorite[]; total: number; } }
+interface TodayVibeResponse { success: boolean; data: {
+  reasoning: SetStateAction<string>;
+  weather: WeatherData; songs: Song[]; session: string; 
+}; }
 
+// Dummy Data Fallback & Extended Covers
 const covers = {
   desert: 'https://images.unsplash.com/photo-1548364504-57247d6f96bb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZXNlcnQlMjBkdW5lcyUyMGdvbGRlbiUyMGhvdXJ8ZW58MXx8fHwxNzcxNDIzNDQ5fDA&ixlib=rb-4.1.0&q=80&w=1080',
-  aurora: 'https://images.unsplash.com/photo-1549633760-9a0931220b84?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxub3J0aGVybiUyMGxpZ2h0cyUyMGF1cm9yYSUyMHNreXxlbnwxfHx8fDE3NzE0MjM0NTB8MA&ixlib=rb-4.1.0&q=80&w=1080'
+  aurora: 'https://images.unsplash.com/photo-1549633760-9a0931220b84?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxub3J0aGVybiUyMGxpZ2h0cyUyMGF1cm9yYSUyMHNreXxlbnwxfHx8fDE3NzE0MjM0NTB8MA&ixlib=rb-4.1.0&q=80&w=1080',
+  neonCity: 'https://images.unsplash.com/photo-1631379879495-23a8e79abed9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuZW9uJTIwY2l0eSUyMHJhaW4lMjBzdHJlZXR8ZW58MXx8fHwxNzcxNDIzNDQ3fDA&ixlib=rb-4.1.0&q=80&w=1080',
+  abstractArt: 'https://images.unsplash.com/photo-1616941351479-0072624fca9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHBhaW50aW5nJTIwdGV4dHVyZSUyMHdhcm18ZW58MXx8fHwxNzcxNDIzNDQ5fDA&ixlib=rb-4.1.0&q=80&w=1080',
+  avatarDefault: 'https://images.unsplash.com/photo-1762708590808-c453c0e4fb0f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMG1hbiUyMHNtaWxpbmclMjBjYXN1YWwlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NzE3NDI3OTZ8MA&ixlib=rb-4.1.0&q=80&w=1080'
 };
 
 function Equalizer({ bars = 5, active = true, className = '' }: { bars?: number; active?: boolean; className?: string }) {
@@ -47,6 +58,12 @@ export default function AppDashboard() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [curatedSongs, setCuratedSongs] = useState<Song[]>([]);
   const [session, setSession] = useState<string>('morning');
+  const [reasoning, setReasoning] = useState<string>('');
+  
+  // Favorites state
+  const [favorites, setFavorites] = useState<Song[]>([]);
+  const [isFavoritesLoading, setIsFavoritesLoading] = useState(true);
+  const [favoritedSongIds, setFavoritedSongIds] = useState<Set<string>>(new Set());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,27 +76,70 @@ export default function AppDashboard() {
   const [audioDuration, setAudioDuration] = useState(0);
   
   const [clockTime, setClockTime] = useState<Date | null>(null);
+  
+  // Custom state for Profile Slideshow
+  const [activeProfileIdx, setActiveProfileIdx] = useState(0);
 
+  // Fetch Weather & Songs
   useEffect(() => {
     const fetchTodayVibe = async () => {
       try {
-        const response = await axios.get<TodayVibeResponse>('/api/vibe-scan/today-vibe');
+        const response = await axios.get<TodayVibeResponse>('/api/weather-time/today-vibe');
         if (response.data.success) {
           setWeatherData(response.data.data.weather);
           setCuratedSongs(response.data.data.songs);
           setSession(response.data.data.session);
+          setReasoning(response.data.data.reasoning as string);
         }
       } catch (error) { console.error(error); }
     };
     fetchTodayVibe();
   }, []);
 
+  // Fetch Favorites
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!isLoaded || !user) return;
+      try {
+        setIsFavoritesLoading(true);
+        const token = await getToken();
+        if (!token) return;
+
+        const response = await axios.get<FavoritesResponse>('/api/profile/favorites', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const favoritesList = response.data.data.favorites;
+        const convertedFavorites = favoritesList.map((fav: Favorite) => ({
+          id: fav.song_id,
+          title: fav.title,
+          artist: fav.artist,
+          album: fav.album,
+          artwork: fav.artwork,
+          previewUrl: fav.preview_url,
+          externalUrl: fav.external_url,
+        }));
+        setFavorites(convertedFavorites);
+        setFavoritedSongIds(new Set(convertedFavorites.map((f: Song) => f.id)));
+      } catch (error) {
+        console.error('Failed to fetch favorites');
+        setFavorites([]);
+        setFavoritedSongIds(new Set());
+      } finally {
+        setIsFavoritesLoading(false);
+      }
+    };
+    
+    fetchFavorites();
+  }, [getToken, isLoaded, user]);
+
+  // Realtime Clock Update
   useEffect(() => {
     setClockTime(new Date());
     const interval = setInterval(() => setClockTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
+  // Audio Player Logic
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -146,6 +206,64 @@ export default function AppDashboard() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Tối ưu hóa: Hàm Xử Lý Yêu Thích an toàn & Optimistic Update
+  const handleToggleFavorite = async (e: React.MouseEvent, song: Song) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check an toàn tránh lỗi 'Cannot read properties of undefined'
+    if (!song || !song.id) {
+      console.error("Dữ liệu bài hát không hợp lệ", song);
+      return;
+    }
+
+    const isFav = favoritedSongIds.has(song.id);
+    const newFavIds = new Set(favoritedSongIds);
+
+    // 1. Optimistic Update: Cập nhật giao diện ngay lập tức
+    if (isFav) {
+      newFavIds.delete(song.id);
+      setFavorites(prev => prev.filter(f => f.id !== song.id));
+    } else {
+      newFavIds.add(song.id);
+      setFavorites(prev => [...prev, song]);
+    }
+    setFavoritedSongIds(newFavIds);
+
+    // 2. Gửi API chạy ngầm
+    try {
+      const token = await getToken();
+      if (isFav) {
+        await axios.delete(`/api/profile/favorites/${song.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post('/api/profile/favorites', {
+          song_id: song.id,
+          title: song.title || 'Unknown',
+          artist: song.artist || 'Unknown',
+          album: song.album || 'Unknown',
+          artwork: song.artwork || '',
+          preview_url: song.previewUrl || '',
+          external_url: song.externalUrl || '',
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi lưu yêu thích:', err?.message || err);
+      // Hoàn tác nếu API thất bại (Rollback UI)
+      if (isFav) {
+        newFavIds.add(song.id);
+        setFavorites(prev => [...prev, song]);
+      } else {
+        newFavIds.delete(song.id);
+        setFavorites(prev => prev.filter(f => f.id !== song.id));
+      }
+      setFavoritedSongIds(newFavIds);
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -192,8 +310,10 @@ export default function AppDashboard() {
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'ai-scan', icon: Sparkles, label: 'AI Vibe Scan' },
+    { id: 'profile', icon: User, label: 'Profile' },
   ];
 
+  // Realtime Clock Math
   const hours = clockTime ? clockTime.getHours() : 0;
   const minutes = clockTime ? clockTime.getMinutes() : 0;
   const seconds = clockTime ? clockTime.getSeconds() : 0;
@@ -205,6 +325,7 @@ export default function AppDashboard() {
   return (
     <div className="h-screen w-full bg-[#f8fafc] text-slate-900 flex overflow-hidden font-sans relative selection:bg-rose-200">
       
+      {/* ─── Animated Colorful Glassmorphism Background ─── */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-rose-200/40 mix-blend-multiply filter blur-[120px] animate-blob" />
         <div className="absolute top-[20%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-sky-200/40 mix-blend-multiply filter blur-[120px] animate-blob animation-delay-2000" />
@@ -224,6 +345,7 @@ export default function AppDashboard() {
         )}
       </AnimatePresence>
 
+      {/* ─── Sidebar ────────────────────────────────────────── */}
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 260 : 0 }}
@@ -262,9 +384,6 @@ export default function AppDashboard() {
           </nav>
 
           <div className="pt-4 border-t border-white/60 space-y-1">
-            {/* <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-white/50 border border-transparent transition-colors">
-              <Settings className="w-5 h-5" /> Settings
-            </button> */}
             <button onClick={() => signOut({ redirectUrl: '/' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 border border-transparent transition-colors">
               <LogOut className="w-5 h-5" /> Logout
             </button>
@@ -272,33 +391,59 @@ export default function AppDashboard() {
         </div>
       </motion.aside>
 
+      {/* ─── Main Content ────────────────────────────────────── */}
       <main className="flex-1 h-full overflow-y-auto pb-40 w-full p-6 md:p-10 relative z-10 scroll-smooth">
         <div className="max-w-5xl mx-auto">
           
+          {/* Header Mobile / Desktop Toggle */}
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-4">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-xl bg-white/60 backdrop-blur-md border border-white/80 shadow-sm text-slate-600 hover:bg-white transition-colors">
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
-                  {getGreeting().text}, <span className="text-rose-500 font-serif italic font-normal">{!isLoaded ? '...' : user?.firstName || 'Guest'}</span>
-                </h2>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{getGreeting().mood} session</p>
-              </div>
+              
+              {/* Dynamic Header Title based on Nav */}
+              {activeNav === 'home' && (
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
+                    {getGreeting().text}, <span className="text-rose-500 font-serif italic font-normal">{!isLoaded ? '...' : user?.firstName || 'Guest'}</span>
+                  </h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{getGreeting().mood} session</p>
+                </div>
+              )}
+              {activeNav === 'ai-scan' && (
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
+                    AI Visual <span className="text-rose-500 font-serif italic font-normal">Engine</span>
+                  </h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Image to Playlist</p>
+                </div>
+              )}
+              {activeNav === 'profile' && (
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
+                    Your <span className="text-rose-500 font-serif italic font-normal">Profile</span>
+                  </h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Manage your vibes</p>
+                </div>
+              )}
+
             </div>
-            {/* <button className="w-10 h-10 rounded-full bg-white/60 backdrop-blur-md border border-white/80 shadow-sm flex items-center justify-center hover:bg-white transition-colors">
-              <User className="w-5 h-5 text-slate-500" />
-            </button> */}
+            <button onClick={() => setActiveNav('profile')} className="w-11 h-11 rounded-full bg-white/60 backdrop-blur-md border border-white/80 shadow-sm flex items-center justify-center hover:bg-white transition-colors overflow-hidden p-1">
+              <img src={user?.imageUrl || covers.avatarDefault} alt="Profile" className="w-full h-full rounded-full object-cover" />
+            </button>
           </div>
 
+          {/* ─── HOME TAB ─── */}
           {activeNav === 'home' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 h-auto lg:h-[340px]">
                 
+                {/* Weather Card */}
                 <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col justify-between h-full">
                   <div className="flex justify-between items-center mb-6">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Weather & Mood</span>
+                    <CloudRain className="w-5 h-5 text-sky-500" />
                   </div>
                   
                   <div className="flex items-center justify-between mt-auto mb-8 px-2">
@@ -323,11 +468,12 @@ export default function AppDashboard() {
 
                   <div className="bg-white/60 border border-white/80 rounded-[1.5rem] p-4 text-center shadow-sm">
                     <p className="text-sm text-slate-700 font-medium">
-                      Perfect weather — we queued <span className="text-rose-500 font-bold">{curatedSongs.length > 0 ? curatedSongs.length : 20} curated tracks</span> for this moment.
+                      {reasoning ? reasoning : 'Your vibe today is influenced by the weather, creating a perfect mood for curated tracks.'}
                     </p>
                   </div>
                 </div>
 
+                {/* Real-time Clock Card */}
                 <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col items-center justify-center h-full relative">
                   <div className="absolute top-8 left-8">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Local Time</span>
@@ -349,6 +495,7 @@ export default function AppDashboard() {
                 </div>
               </div>
 
+              {/* Playlist Section */}
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold text-slate-900">Curated <span className="text-rose-500 font-serif italic font-normal">for you</span></h3>
@@ -371,11 +518,18 @@ export default function AppDashboard() {
                         <h4 className="text-sm font-bold text-slate-900 truncate">{song.title}</h4>
                         <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{song.artist}</p>
                       </div>
+                      
                       {currentTrack?.id === song.id && isAudioPlaying && (
-                        <div className="pr-3">
+                        <div className="pr-1">
                           <Equalizer bars={3} active className="text-rose-500" />
                         </div>
                       )}
+                      
+                      {/* Cập nhật lại nút Heart, gán e và song chuẩn xác */}
+                      <button onClick={(e) => handleToggleFavorite(e, song)} className="flex-shrink-0 p-2 transition-all z-10 hover:scale-110">
+                        <Heart className={`w-5 h-5 transition-colors ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500 drop-shadow-sm' : 'text-slate-300 hover:text-rose-500 hover:bg-white/50 rounded-full'}`} />
+                      </button>
+
                     </div>
                   ))}
                 </div>
@@ -383,6 +537,7 @@ export default function AppDashboard() {
             </motion.div>
           )}
 
+          {/* ─── AI SCAN TAB ─── */}
           {activeNav === 'ai-scan' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="h-[calc(100vh-220px)] flex flex-col">
               <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex-1 flex flex-col lg:flex-row p-6 lg:p-8 gap-8 overflow-hidden relative">
@@ -446,7 +601,13 @@ export default function AppDashboard() {
                                       <h4 className="text-sm font-bold text-slate-900 truncate">{song.title}</h4>
                                       <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{song.artist}</p>
                                     </div>
-                                    {currentTrack?.id === song.id && isAudioPlaying ? <Equalizer bars={3} active className="text-rose-500 mr-3" /> : <Play className="w-5 h-5 text-slate-400 group-hover:text-rose-500 mr-3 transition-colors" />}
+                                    
+                                    {currentTrack?.id === song.id && isAudioPlaying ? <Equalizer bars={3} active className="text-rose-500 mr-1" /> : <Play className="w-5 h-5 text-slate-400 group-hover:text-rose-500 mr-1 transition-colors" />}
+                                    
+                                    {/* Sửa lại hàm onClick tương tự trên này */}
+                                    <button onClick={(e) => handleToggleFavorite(e, song)} className="flex-shrink-0 p-2 transition-all z-10 hover:scale-110">
+                                      <Heart className={`w-5 h-5 transition-colors ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500 drop-shadow-sm' : 'text-slate-300 hover:text-rose-500 hover:bg-white/50 rounded-full'}`} />
+                                    </button>
                                   </div>
                                 ))}
                             </div>
@@ -459,9 +620,135 @@ export default function AppDashboard() {
               </div>
             </motion.div>
           )}
+
+          {/* ─── PROFILE TAB ─── */}
+          {activeNav === 'profile' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex flex-col gap-6 lg:gap-8">
+              
+              {/* Profile Identity Card */}
+              <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-rose-200/40 to-sky-200/40 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative flex-shrink-0">
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-2 bg-white/60 backdrop-blur-sm border border-white/80 shadow-xl">
+                    <img src={user?.imageUrl || covers.avatarDefault} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                  </div>
+                  <div className="absolute bottom-2 right-2 w-10 h-10 bg-gradient-to-br from-rose-400 to-rose-600 rounded-full flex items-center justify-center border-4 border-white text-white shadow-md">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="text-center md:text-left flex-1 relative z-10">
+                  <h2 className="text-3xl md:text-4xl font-bold text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
+                    {!isLoaded ? 'Loading...' : user?.firstName || 'Guest User'}
+                  </h2>
+                  <p className="text-slate-500 font-medium mt-1 text-lg">{user?.primaryEmailAddress?.emailAddress || '@guest_vibes'}</p>
+                  
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-6">
+                    <div className="px-4 py-2 rounded-full bg-white/60 border border-white/80 text-sm font-bold text-slate-700 shadow-sm flex items-center gap-2">
+                      <Disc3 className="w-4 h-4 text-sky-500" /> 128 Resonances
+                    </div>
+                    <div className="px-4 py-2 rounded-full bg-white/60 border border-white/80 text-sm font-bold text-slate-700 shadow-sm flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-rose-500 fill-rose-500" /> {favorites.length} Favorites
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative z-10 flex-shrink-0 mt-4 md:mt-0">
+                   <button className="px-6 py-3 rounded-full bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-transform hover:-translate-y-0.5 shadow-xl shadow-slate-900/20">
+                     Edit Profile
+                   </button>
+                </div>
+              </div>
+
+              {/* Horizontal Coverflow Slideshow for Favorite Tracks */}
+              <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 py-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden flex flex-col items-center">
+                <div className="flex items-center justify-between w-full px-10 mb-8 z-20">
+                  <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                     <Heart className="w-7 h-7 text-rose-500 fill-rose-500 drop-shadow-sm" /> 
+                     Favorite <span className="font-serif italic font-normal text-rose-500">Tracks</span>
+                  </h3>
+                </div>
+
+                {isFavoritesLoading ? (
+                  <div className="w-full h-[320px] flex items-center justify-center">
+                    <Loader className="w-8 h-8 text-rose-500 animate-spin" />
+                  </div>
+                ) : favorites.length === 0 ? (
+                  <div className="w-full h-[320px] flex items-center justify-center flex-col gap-4">
+                    <Heart className="w-12 h-12 text-slate-300" />
+                    <p className="text-slate-500 font-medium">No favorites yet. Start adding your favorite tracks!</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative w-full h-[320px] flex items-center justify-center">
+                      {favorites.map((song, i) => {
+                        const offset = i - activeProfileIdx;
+                        const absOffset = Math.abs(offset);
+                        const isActive = offset === 0;
+
+                        return (
+                          <motion.div
+                            key={song.id}
+                            onClick={() => {
+                              if (isActive) playTrack(song, favorites);
+                              else setActiveProfileIdx(i);
+                            }}
+                            animate={{
+                              x: offset * 160,
+                              scale: isActive ? 1 : Math.max(0.75 - absOffset * 0.1, 0.5),
+                              opacity: absOffset > 2 ? 0 : isActive ? 1 : Math.max(0.6 - absOffset * 0.2, 0),
+                              zIndex: 10 - absOffset
+                            }}
+                            transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
+                            className={`absolute w-52 p-4 bg-white/60 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col items-center group ${absOffset > 2 ? 'pointer-events-none' : 'cursor-pointer'}`}
+                          >
+                            <div className="w-full aspect-square rounded-[1.5rem] overflow-hidden mb-4 relative shadow-sm border border-white/50">
+                              <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                              <div className={`absolute inset-0 bg-slate-900/20 flex items-center justify-center transition-opacity backdrop-blur-[2px] ${isActive ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                                 <div className="w-12 h-12 bg-white/95 rounded-full flex items-center justify-center shadow-lg text-slate-900 transition-transform hover:scale-105">
+                                   {currentTrack?.id === song.id && isAudioPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                                 </div>
+                              </div>
+                            </div>
+                            <h4 className="text-base font-bold text-slate-900 truncate w-full text-center">{song.title}</h4>
+                            <p className="text-xs font-medium text-slate-500 truncate w-full text-center mt-1">{song.artist}</p>
+                            
+                            {isActive && (
+                              <button onClick={(e) => handleToggleFavorite(e, song)} className="mt-4 w-10 h-10 rounded-full bg-white border border-rose-100 shadow-sm flex items-center justify-center hover:bg-rose-50 transition-colors z-20 hover:scale-110">
+                                 <Heart className={`w-5 h-5 transition-colors ${favoritedSongIds.has(song.id) ? 'text-rose-500 fill-rose-500' : 'text-slate-300'} drop-shadow-sm`} />
+                              </button>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Slideshow Nav Controls */}
+                    <div className="flex items-center justify-center gap-6 mt-6 z-20">
+                      <button onClick={() => setActiveProfileIdx(Math.max(0, activeProfileIdx - 1))} className="p-2 rounded-full bg-white/60 border border-white hover:bg-white shadow-sm text-slate-400 hover:text-slate-700 transition-colors" disabled={activeProfileIdx === 0}>
+                        <ChevronLeft className="w-6 h-6" />
+                      </button>
+                      <div className="flex gap-2">
+                        {favorites.map((_, idx) => (
+                           <button key={idx} onClick={() => setActiveProfileIdx(idx)} className={`h-2 rounded-full transition-all duration-300 ${idx === activeProfileIdx ? 'bg-rose-500 w-6' : 'bg-slate-300 w-2 hover:bg-slate-400'}`} />
+                        ))}
+                      </div>
+                      <button onClick={() => setActiveProfileIdx(Math.min(favorites.length - 1, activeProfileIdx + 1))} className="p-2 rounded-full bg-white/60 border border-white hover:bg-white shadow-sm text-slate-400 hover:text-slate-700 transition-colors" disabled={activeProfileIdx === favorites.length - 1}>
+                        <ChevronRight className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+            </motion.div>
+          )}
+
         </div>
       </main>
 
+      {/* ─── Floating Bottom Player (Island Design) ──────────────────────────────── */}
       <div className={`fixed bottom-6 right-0 z-50 pointer-events-none flex justify-center px-4 transition-all duration-300 ${sidebarOpen ? 'left-0 md:left-[260px]' : 'left-0'}`}>
         <div className="pointer-events-auto w-full max-w-[90%] md:max-w-3xl bg-white/80 backdrop-blur-3xl border border-white/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] rounded-full px-4 py-3 flex items-center justify-between gap-4">
           

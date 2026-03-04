@@ -18,9 +18,4 @@ vibeScannerRouter.post(
   (req: Request, res: Response) => vibeController.getSongs(req as ClerkRequest, res)
 );
 
-vibeScannerRouter.get(
-  "/today-vibe",
-  (req: Request, res: Response) => vibeController.getTodayVibe(req, res)
-);
-
 export default vibeScannerRouter;

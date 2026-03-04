@@ -28,6 +28,7 @@ yarn-error.log*
 .env.production
 .env.development
 .env.test
+.env
 
 # Lưu ý: Thông thường .env chứa các biến public mặc định có thể commit, 
 # nhưng nếu bạn để secret trong .env thì hãy uncomment dòng dưới đây:

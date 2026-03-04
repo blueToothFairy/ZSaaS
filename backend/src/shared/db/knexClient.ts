@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import knex, { Knex } from "knex";
 
 declare global {
