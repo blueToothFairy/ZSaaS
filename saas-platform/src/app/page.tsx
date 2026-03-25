@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, SetStateAction } from 'react';
 import { useAuth, useUser, useClerk } from "@clerk/nextjs";
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import {
   CloudRain,
@@ -46,6 +47,14 @@ export default function AppDashboard() {
   const { getToken } = useAuth();
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const router = useRouter();
+
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, user, router]);
 
   const [activeNav, setActiveNav] = useState('home');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -303,6 +312,18 @@ export default function AppDashboard() {
   const secDeg = seconds * 6;
   const minDeg = minutes * 6 + seconds * 0.1;
   const hourDeg = (hours % 12) * 30 + minutes * 0.5;
+
+  // Show loading while checking auth
+  if (!isLoaded || !user) {
+    return (
+      <div className="h-screen w-full bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full bg-[#f8fafc] text-slate-900 flex overflow-hidden font-sans relative selection:bg-rose-200">

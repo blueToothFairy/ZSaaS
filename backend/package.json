@@ -15,19 +15,25 @@
   "type": "module",
   "dependencies": {
     "@clerk/express": "^1.7.72",
+    "@upstash/redis": "^1.28.0",
     "axios": "^1.13.5",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.1.5",
+    "ioredis": "^5.10.0",
     "knex": "^3.1.0",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
-    "pg": "^8.18.0"
+    "pg": "^8.18.0",
+    "rate-limit-redis": "^4.1.5",
+    "redis": "^4.6.13"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.0.0",
+    "@types/node": "^25.3.5",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

@@ -1,5 +1,6 @@
 import ISongSearch, { Song, SearchResult } from "../interfaces/song-search.interface.js";
 import axios from "axios";
+import { cacheService } from "../../../shared/cache/cacheService.js";
 
 interface ITunesResult {
   trackName: string;
@@ -23,7 +24,15 @@ export default class ITunesSearchService implements ISongSearch {
   private readonly maxRetries = 3;
 
   async searchSongs(query: string, limit: number = 10, country: string = "US"): Promise<any> {
-    console.log('searchSongs');
+    console.log('searchSongs:', query);
+
+    // ─── Cache Lookup ──────────────
+    const cacheKey = `search:${query.toLowerCase()}:${limit}:${country}`;
+    const cachedResult = await cacheService.getCachedSongSearch(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
+
     try {
       const response = await axios.get<ITunesResponse>(this.baseUrl, {
         params: {
@@ -36,16 +45,21 @@ export default class ITunesSearchService implements ISongSearch {
         timeout: 10000,
       });
 
-      console.log('res: ', response.data);
+      console.log('iTunes API response received:', response.data.resultCount, 'results');
 
       const songs = this.transformResults(response.data.results, query);
       const dedupedSongs = this.deduplicateSongs(songs);
 
-      return {
+      const result = {
         songs: dedupedSongs.slice(0, limit),
         query,
         totalResults: dedupedSongs.length,
       };
+
+      // ─── Cache Result ──────────────
+      await cacheService.cacheSongSearch(cacheKey, result);
+
+      return result;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(`iTunes search failed: ${error.message}`);
@@ -64,18 +78,29 @@ export default class ITunesSearchService implements ISongSearch {
       }
 
       try {
-        const response = await axios.get<ITunesResponse>(this.baseUrl, {
-          params: {
-            term: keyword,
-            media: "music",
-            entity: "song",
-            limit: limit,
-            country,
-          },
-          timeout: 10000,
-        });
+        // ─── Check Cache First ────────
+        const cachedResult = await cacheService.getCachedSongSearch(keyword);
+        let transformedSongs: Song[];
 
-        const transformedSongs = this.transformResults(response.data.results, keyword);
+        if (cachedResult) {
+          transformedSongs = cachedResult.songs || [];
+        } else {
+          const response = await axios.get<ITunesResponse>(this.baseUrl, {
+            params: {
+              term: keyword,
+              media: "music",
+              entity: "song",
+              limit: limit,
+              country,
+            },
+            timeout: 10000,
+          });
+
+          transformedSongs = this.transformResults(response.data.results, keyword);
+          
+          // ─── Cache Result ──────────────
+          await cacheService.cacheSongSearch(keyword, { songs: transformedSongs });
+        }
 
         for (const song of transformedSongs) {
           if (finalSongs.length >= limit) break;
@@ -89,7 +114,7 @@ export default class ITunesSearchService implements ISongSearch {
         }
 
       } catch (error) {
-        console.error(`⚠️ Bỏ qua keyword "${keyword}" do lỗi:`, axios.isAxiosError(error) ? error.message : error);
+        console.error(`⚠️ Skipping keyword "${keyword}" due to error:`, axios.isAxiosError(error) ? error.message : error);
         continue;
       }
     }
