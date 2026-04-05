@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from 'axios';
 import VibeScannerService from "./services/index.js";
 import ClerkRequest from "../../shared/types/ClerkRequest.js";
+import { resolveCountryCodeFromRequest } from "../../shared/utils/requestCountry.js";
 
 export default class VibeScannerController {
   constructor(
@@ -34,7 +35,13 @@ export default class VibeScannerController {
         return;
       }
 
-      const songs = await this.vibeService.getVibeMatchingSongs(req.file.buffer, req.file.originalname, req.file.mimetype);
+      const clientCountryCode = resolveCountryCodeFromRequest(req);
+      const songs = await this.vibeService.getVibeMatchingSongs(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        clientCountryCode
+      );
 
       // Save to DB (async, non-blocking)
       // this.aiRepo.create({

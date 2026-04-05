@@ -67,7 +67,7 @@ export class ProfileController {
 
   async removeFavorite(req: ClerkRequest, res: Response) {
     const userId = req.auth.userId;
-    const { songId } = req.params;
+    const songId = this.extractSongId(req.params.songId);
 
     try {
       if (!userId) {
@@ -106,7 +106,7 @@ export class ProfileController {
 
   async isFavorited(req: ClerkRequest, res: Response) {
     const userId = req.auth.userId;
-    const { songId } = req.params;
+    const songId = this.extractSongId(req.params.songId);
 
     try {
       if (!userId) {
@@ -133,5 +133,13 @@ export class ProfileController {
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
+  }
+
+  private extractSongId(songIdParam: string | string[] | undefined): string | undefined {
+    if (Array.isArray(songIdParam)) {
+      return songIdParam[0];
+    }
+
+    return songIdParam;
   }
 }

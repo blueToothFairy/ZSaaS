@@ -9,7 +9,7 @@ export default class WeatherTimeService {
     private readonly weatherGenreService: IWeatherGenreService
   ) { }
 
-  async getTodayVibe(songSearch: ISongSearch): Promise<WeatherTimeData> {
+  async getTodayVibe(songSearch: ISongSearch, clientCountryCode?: string): Promise<WeatherTimeData> {
     // Get current weather
     const weather = await this.weatherService.getCurrentWeather();
     console.log("Current weather:", weather);
@@ -33,13 +33,13 @@ export default class WeatherTimeService {
     console.log("Weather genre match:", weatherGenreMatch);
 
     // Get top 8 keywords for song search
-    const topKeywords = weatherGenreMatch.keywords.slice(0, 8);
+    const topKeywords = weatherGenreMatch.keywords.slice(0, 16);
 
     // Search for songs using country code from location
     const searchResult = await songSearch.searchByKeywords(
       topKeywords,
       75,
-      weather.location.countryCode
+      clientCountryCode || weather.location.countryCode
     );
 
     return {

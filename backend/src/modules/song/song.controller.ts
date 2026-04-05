@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from 'axios';
 import SongSearchService from "./services/index.js";
 import ClerkRequest from "../../shared/types/ClerkRequest.js";
+import { resolveCountryCodeFromRequest } from "../../shared/utils/requestCountry.js";
 
 export default class SongSearchController {
   constructor(
@@ -12,14 +13,15 @@ export default class SongSearchController {
     console.log('search by keywords');
     
     try {
-      const { keywords, limit = 10, country = "US" } = req.body;
+      const { keywords, limit = 10, country } = req.body;
 
       if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
         res.status(400).json({ error: "Keywords array is required" });
         return;
       }
 
-      const result = await this.songSearchService.searchByKeywords(keywords, limit, country);
+      const resolvedCountry = country || resolveCountryCodeFromRequest(req) || "US";
+      const result = await this.songSearchService.searchByKeywords(keywords, limit, resolvedCountry);
 
       res.status(200).json({
         success: true,
@@ -40,14 +42,15 @@ export default class SongSearchController {
     console.log('search songs');
     
     try {
-      const { query, limit = 10, country = "US" } = req.body;
+      const { query, limit = 10, country } = req.body;
 
       if (!query || typeof query !== 'string') {
         res.status(400).json({ error: "Query string is required" });
         return;
       }
 
-      const result = await this.songSearchService.searchSongs(query, limit, country);
+      const resolvedCountry = country || resolveCountryCodeFromRequest(req) || "US";
+      const result = await this.songSearchService.searchSongs(query, limit, resolvedCountry);
 
       res.status(200).json({
         success: true,

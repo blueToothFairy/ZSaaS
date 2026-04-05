@@ -11,7 +11,12 @@ export default class VibeScannerService {
     private readonly aiRepo: AIRepository
   ) { }
 
-  async getVibeMatchingSongs(buffer: Buffer, originalName: string, mimeType: string): Promise<Song[]> {
+  async getVibeMatchingSongs(
+    buffer: Buffer,
+    originalName: string,
+    mimeType: string,
+    country: string = "US"
+  ): Promise<Song[]> {
     // Prepare FormData
     const formData = new FormData();
     formData.append('file', buffer, {
@@ -29,13 +34,13 @@ export default class VibeScannerService {
 
     // Get top 5 keywords for song search
     const topKeywords = vibes
-      .slice(0, 5)
+      .slice(0, 8)
       .map(v => v.keyword);
 
     console.log("Top keywords for search:", topKeywords);
 
     // Search for songs using keywords
-    const searchResult = await this.songSearch.searchByKeywords(topKeywords, 20);
+    const searchResult = await this.songSearch.searchByKeywords(topKeywords, 20, country);
   
     return searchResult.songs;
   }

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from 'axios';
 import WeatherTimeService from "./services/index.js";
 import ISongSearch from "../song/interfaces/song-search.interface.js";
+import { resolveCountryCodeFromRequest } from "../../shared/utils/requestCountry.js";
 
 export default class WeatherTimeController {
   constructor(
@@ -11,7 +12,8 @@ export default class WeatherTimeController {
 
   async getTodayVibe(req: Request, res: Response): Promise<void> {
     try {
-      const vibeData = await this.weatherTimeService.getTodayVibe(this.songSearch);
+      const clientCountryCode = resolveCountryCodeFromRequest(req);
+      const vibeData = await this.weatherTimeService.getTodayVibe(this.songSearch, clientCountryCode);
 
       res.status(200).json({
         success: true,
