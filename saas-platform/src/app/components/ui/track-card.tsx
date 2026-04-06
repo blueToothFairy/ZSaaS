@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { motion } from 'motion/react';
-import favoritesService from '@/lib/services/favorites.service';
 
 export interface TrackItemProps {
   id: string;
@@ -36,17 +35,8 @@ export const TrackCard: React.FC<TrackItemProps> = ({
 
   useEffect(() => {
     // Check if track is favorited on mount
-    const checkFavoriteStatus = async () => {
-      try {
-        const status = await favoritesService.isFavorited(id);
-        setIsFavorited(status);
-      } catch (err) {
-        console.error('Failed to check favorite status:', err);
-      }
-    };
-
-    checkFavoriteStatus();
-  }, [id]);
+    setIsFavorited(initialFavorited);
+  }, [id, initialFavorited]);
 
   const handleToggleFavorite = useCallback(
     async (e: React.MouseEvent) => {
@@ -55,23 +45,8 @@ export const TrackCard: React.FC<TrackItemProps> = ({
       setError(null);
 
       try {
-        if (isFavorited) {
-          // Remove from favorites
-          await favoritesService.removeFavorite(id);
-          setIsFavorited(false);
-        } else {
-          // Add to favorites
-          await favoritesService.addFavorite({
-            song_id: id,
-            title,
-            artist,
-            album,
-            artwork,
-            preview_url: previewUrl,
-            external_url: externalUrl,
-          });
-          setIsFavorited(true);
-        }
+        // Optimistic update
+        setIsFavorited(!isFavorited);
       } catch (err: Error | unknown) {
         const error = err instanceof Error ? err : new Error('Unknown error');
         setError(error.message || 'Failed to update favorite');
