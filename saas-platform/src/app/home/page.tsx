@@ -2,15 +2,16 @@
 
 import { useState, useRef, useEffect, SetStateAction } from 'react';
 import { useAuth, useUser, useClerk } from "@clerk/nextjs";
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import {
   CloudRain,
   Camera, Home, User, Sparkles, Wind, Droplets, Settings, LogOut,
   Play, Pause, SkipForward, SkipBack, Disc3, Menu, X, AlertCircle, Loader, Heart,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Volume2, ScanLine, Snowflake, Cloud, Sun, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { compressImage } from '@/lib/utils/image-compressor';
 
 // Interfaces
@@ -42,10 +43,55 @@ function Equalizer({ bars = 5, active = true, className = '' }: { bars?: number;
   );
 }
 
+// Get weather-based background and icon
+function getWeatherAssets(weather: WeatherData | null) {
+  if (!weather) {
+    const hours = new Date().getHours();
+    const isDay = hours >= 6 && hours < 18;
+    return { bg: '/assets/weather/sunny.png', icon: Sun, iconColor: isDay ? 'text-yellow-400' : 'text-indigo-200' };
+  }
+  
+  const code = weather.weatherCode;
+  const condition = weather.condition?.toLowerCase() ?? '';
+  const hours = new Date().getHours();
+  const isDay = hours >= 6 && hours < 18;
+  
+  // Rainy
+  if (code === 80 || code === 81 || code === 82 || condition.includes('rain') || condition.includes('drizzle')) {
+    return { bg: '/assets/weather/rainy.jfif', icon: CloudRain, iconColor: 'text-blue-300' };
+  }
+  
+  // Snowy
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86 || condition.includes('snow')) {
+    return { bg: '/assets/weather/snowy.png', icon: Snowflake, iconColor: 'text-cyan-100' };
+  }
+  
+  // Windy/Wind
+  if (condition.includes('wind')) {
+    return { bg: '/assets/weather/windy.jfif', icon: Wind, iconColor: 'text-cyan-300' };
+  }
+  
+  // Cloudy
+  if (code === 1 || code === 2 || code === 3 || condition.includes('cloud') || condition.includes('overcast')) {
+    return { bg: '/assets/weather/cloudy.png', icon: Cloud, iconColor: 'text-slate-300' };
+  }
+  
+  // Sunny/Clear
+  return { bg: '/assets/weather/sunny.png', icon: Sun, iconColor: isDay ? 'text-yellow-400' : 'text-indigo-200' };
+}
+
 export default function AppDashboard() {
   const { getToken } = useAuth();
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const router = useRouter();
+
+  // Redirect to landing page if not authenticated
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/landing-page');
+    }
+  }, [isLoaded, user, router]);
 
   const [activeNav, setActiveNav] = useState('home');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -89,7 +135,7 @@ export default function AppDashboard() {
           setWeatherData(response.data.data.weather);
           setCuratedSongs(response.data.data.songs);
           setSession(response.data.data.session);
-          setReasoning(response.data.data.reasoning as string);
+          setReasoning(response.data.data.reasoning);
         }
       } catch (error) { console.error(error); }
     };
@@ -99,12 +145,9 @@ export default function AppDashboard() {
   // Fetch Favorites
   useEffect(() => {
     const fetchFavorites = async () => {
-      if (!isLoaded || !user) return;
       try {
         setIsFavoritesLoading(true);
         const token = await getToken();
-        if (!token) return;
-
         const response = await axios.get<FavoritesResponse>('/api/profile/favorites', {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -120,7 +163,7 @@ export default function AppDashboard() {
         }));
         setFavorites(convertedFavorites);
         setFavoritedSongIds(new Set(convertedFavorites.map((f: Song) => f.id)));
-      } catch (error) {
+      } catch (error: Error | unknown) {
         console.error('Failed to fetch favorites');
         setFavorites([]);
         setFavoritedSongIds(new Set());
@@ -130,7 +173,7 @@ export default function AppDashboard() {
     };
     
     fetchFavorites();
-  }, [getToken, isLoaded, user]);
+  }, [getToken]);
 
   // Realtime Clock Update
   useEffect(() => {
@@ -206,31 +249,24 @@ export default function AppDashboard() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Tối ưu hóa: Hàm Xử Lý Yêu Thích an toàn & Optimistic Update
-  const handleToggleFavorite = async (e: React.MouseEvent, song: Song) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Check an toàn tránh lỗi 'Cannot read properties of undefined'
-    if (!song || !song.id) {
-      console.error("Dữ liệu bài hát không hợp lệ", song);
-      return;
-    }
-
+  // Reusable Favorite Toggle Logic with Optimistic UI Update
+  const handleToggleFavorite = async (song: Song, e: React.MouseEvent) => {
+    e.stopPropagation(); // Ngăn sự kiện click play nhạc
+    
     const isFav = favoritedSongIds.has(song.id);
     const newFavIds = new Set(favoritedSongIds);
-
-    // 1. Optimistic Update: Cập nhật giao diện ngay lập tức
+    
+    // 1. Optimistic Update: Cập nhật giao diện ngay lập tức trước khi gọi API
     if (isFav) {
       newFavIds.delete(song.id);
-      setFavorites(prev => prev.filter(f => f.id !== song.id));
+      setFavorites(favorites.filter(f => f.id !== song.id));
     } else {
       newFavIds.add(song.id);
-      setFavorites(prev => [...prev, song]);
+      setFavorites([...favorites, song]);
     }
     setFavoritedSongIds(newFavIds);
 
-    // 2. Gửi API chạy ngầm
+    // 2. Gọi API ngầm ở phía sau
     try {
       const token = await getToken();
       if (isFav) {
@@ -240,27 +276,19 @@ export default function AppDashboard() {
       } else {
         await axios.post('/api/profile/favorites', {
           song_id: song.id,
-          title: song.title || 'Unknown',
-          artist: song.artist || 'Unknown',
-          album: song.album || 'Unknown',
-          artwork: song.artwork || '',
-          preview_url: song.previewUrl || '',
-          external_url: song.externalUrl || '',
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          artwork: song.artwork,
+          preview_url: song.previewUrl,
+          external_url: song.externalUrl,
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
-    } catch (err: any) {
-      console.error('Lỗi khi lưu yêu thích:', err?.message || err);
-      // Hoàn tác nếu API thất bại (Rollback UI)
-      if (isFav) {
-        newFavIds.add(song.id);
-        setFavorites(prev => [...prev, song]);
-      } else {
-        newFavIds.delete(song.id);
-        setFavorites(prev => prev.filter(f => f.id !== song.id));
-      }
-      setFavoritedSongIds(newFavIds);
+    } catch (err: Error | unknown) {
+      console.error('Error toggling favorite:', err);
+      // Nếu API lỗi, có thể rollback state ở đây, nhưng tạm thời để visual mượt mà
     }
   };
 
@@ -288,22 +316,29 @@ export default function AppDashboard() {
             });
             setScanResults(response.data.songs || []);
             setScanProgress(100);
-          } catch (error: any) {
-            setApiError(error.message); setUploadedImage(null);
+          } catch (error: unknown) {
+            setApiError(error instanceof Error ? error.message : 'Failed to analyze image');
+            setUploadedImage(null);
           } finally {
             setIsAnalyzing(false); clearInterval(interval);
           }
         };
         reader.readAsDataURL(file);
-      } catch (error: any) {
-        setApiError(error.message); setUploadedImage(null);
+      } catch (error: unknown) {
+        setApiError(error instanceof Error ? error.message : 'Failed to process image');
+        setUploadedImage(null);
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const getGreeting = () => {
-    const sessionTexts: any = { morning: 'Good morning', afternoon: 'Good afternoon', evening: 'Good evening', night: 'Late night' };
+    const sessionTexts: Record<string, string> = {
+      morning: 'Good morning',
+      afternoon: 'Good afternoon',
+      evening: 'Good evening',
+      night: 'Late night',
+    };
     return { text: sessionTexts[session] || 'Good morning', mood: session };
   };
 
@@ -322,484 +357,420 @@ export default function AppDashboard() {
   const minDeg = minutes * 6 + seconds * 0.1;
   const hourDeg = (hours % 12) * 30 + minutes * 0.5;
 
-  return (
-    <div className="h-screen w-full bg-[#f8fafc] text-slate-900 flex overflow-hidden font-sans relative selection:bg-rose-200">
-      
-      {/* ─── Animated Colorful Glassmorphism Background ─── */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-rose-200/40 mix-blend-multiply filter blur-[120px] animate-blob" />
-        <div className="absolute top-[20%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-sky-200/40 mix-blend-multiply filter blur-[120px] animate-blob animation-delay-2000" />
-        <div className="absolute bottom-[-20%] left-[20%] w-[55vw] h-[55vw] rounded-full bg-amber-100/40 mix-blend-multiply filter blur-[120px] animate-blob animation-delay-4000" />
-        <div className="absolute inset-0 bg-white/40 backdrop-blur-[50px]" />
+  // Show loading while checking auth
+  if (!isLoaded || !user) {
+    return (
+      <div className="h-screen w-full bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
       </div>
+    );
+  }
 
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30"
-          />
-        )}
-      </AnimatePresence>
+  return (
+    <div 
+      className="min-h-screen w-full bg-fixed bg-cover bg-center p-6 flex relative font-sans text-white"
+      style={{ backgroundImage: `url('${getWeatherAssets(weatherData).bg}')` }}
+    >
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black/40 pointer-events-none z-0"></div>
 
-      {/* ─── Sidebar ────────────────────────────────────────── */}
+      {/* Sidebar */}
       <motion.aside
-        initial={false}
-        animate={{ width: sidebarOpen ? 260 : 0 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="absolute md:relative left-0 top-0 h-full bg-white/50 backdrop-blur-2xl border-r border-white/60 shadow-[4px_0_24px_rgba(0,0,0,0.05)] flex-shrink-0 z-40 overflow-hidden"
+        animate={{ x: sidebarOpen ? 0 : -280 }}
+        transition={{ duration: 0.3 }}
+        className="fixed left-0 top-0 h-screen w-64 bg-white/10 backdrop-blur-md border-r border-white/15 py-8 px-6 z-40 overflow-y-auto\"
       >
-        <div className="flex flex-col h-full w-[260px] min-w-[260px] p-6">
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/20">
-                <Disc3 className="w-5 h-5" />
-              </div>
-              <div className="text-xl font-bold tracking-tight">
-                <span>Vibe</span><span className="text-rose-500 font-serif italic font-normal">Tune</span>
-              </div>
-            </div>
-            <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 text-slate-500 hover:bg-white rounded-lg transition-colors">
-              <X className="w-5 h-5" />
-            </button>
+        <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none rounded-r-2xl"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-12">
+            <img src="/assets/brand/vibetune_logo.png" alt="VibeTune" className="w-8 h-8" />
+            <h1 className="text-2xl font-bold tracking-wide">VibeTune</h1>
           </div>
 
-          <nav className="flex-1 space-y-2">
-            {navItems.map((item) => (
+          <nav className="space-y-4">
+            {[
+              { id: 'home', label: 'Home', icon: Home },
+              { id: 'ai-scan', label: 'AI Vibe Scan', icon: ScanLine },
+              { id: 'profile', label: 'Profile', icon: User }
+            ].map((item) => (
               <button
                 key={item.id}
-                onClick={() => { setActiveNav(item.id); if(window.innerWidth < 768) setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${
-                  activeNav === item.id 
-                  ? 'bg-white/80 border border-white text-slate-900 font-bold shadow-sm' 
-                  : 'text-slate-500 hover:bg-white/50 hover:text-slate-800 font-semibold border border-transparent'
+                onClick={() => setActiveNav(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium shadow-sm transition-all ${
+                  activeNav === item.id
+                    ? 'bg-white/10 text-white border border-white/15'
+                    : 'text-white/70 hover:bg-white/5 border border-transparent'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${activeNav === item.id ? 'text-rose-500' : ''}`} /> {item.label}
+                <item.icon size={20} /> {item.label}
               </button>
             ))}
           </nav>
+        </div>
 
-          <div className="pt-4 border-t border-white/60 space-y-1">
-            <button onClick={() => signOut({ redirectUrl: '/' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 border border-transparent transition-colors">
-              <LogOut className="w-5 h-5" /> Logout
-            </button>
+        <div className="space-y-4 relative z-10 mt-auto pt-8 border-t border-white/10">
+          <div className="flex items-center gap-3 px-4 py-2">
+            <img 
+              src={user?.imageUrl || 'https://i.pravatar.cc/150?u=guest'} 
+              alt="Profile" 
+              className="w-10 h-10 rounded-full border-2 border-white/15 object-cover"
+            />
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{user?.firstName || 'Guest'}</p>
+              <p className="text-xs text-white/60 truncate">{user?.primaryEmailAddress?.emailAddress || 'User'}</p>
+            </div>
           </div>
+          <button onClick={() => signOut({ redirectUrl: '/landing-page' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-white/70 hover:bg-red-500/20 hover:text-red-300 transition-all border border-transparent">
+            <LogOut size={20} /> Logout
+          </button>
         </div>
       </motion.aside>
 
-      {/* ─── Main Content ────────────────────────────────────── */}
-      <main className="flex-1 h-full overflow-y-auto pb-40 w-full p-6 md:p-10 relative z-10 scroll-smooth">
-        <div className="max-w-5xl mx-auto">
-          
-          {/* Header Mobile / Desktop Toggle */}
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-4">
-              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-xl bg-white/60 backdrop-blur-md border border-white/80 shadow-sm text-slate-600 hover:bg-white transition-colors">
-                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-              
-              {/* Dynamic Header Title based on Nav */}
-              {activeNav === 'home' && (
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
-                    {getGreeting().text}, <span className="text-rose-500 font-serif italic font-normal">{!isLoaded ? '...' : user?.firstName || 'Guest'}</span>
-                  </h2>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{getGreeting().mood} session</p>
-                </div>
-              )}
-              {activeNav === 'ai-scan' && (
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
-                    AI Visual <span className="text-rose-500 font-serif italic font-normal">Engine</span>
-                  </h2>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Image to Playlist</p>
-                </div>
-              )}
-              {activeNav === 'profile' && (
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
-                    Your <span className="text-rose-500 font-serif italic font-normal">Profile</span>
-                  </h2>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Manage your vibes</p>
-                </div>
-              )}
+      {/* Overlay for Mobile */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-            </div>
-            <button onClick={() => setActiveNav('profile')} className="w-11 h-11 rounded-full bg-white/60 backdrop-blur-md border border-white/80 shadow-sm flex items-center justify-center hover:bg-white transition-colors overflow-hidden p-1">
-              <img src={user?.imageUrl || covers.avatarDefault} alt="Profile" className="w-full h-full rounded-full object-cover" />
-            </button>
-          </div>
-
-          {/* ─── HOME TAB ─── */}
-          {activeNav === 'home' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 h-auto lg:h-[340px]">
-                
-                {/* Weather Card */}
-                <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col justify-between h-full">
-                  <div className="flex justify-between items-center mb-6">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Weather & Mood</span>
-                    <CloudRain className="w-5 h-5 text-sky-500" />
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-auto mb-8 px-2">
-                    <div className="flex flex-col">
-                      <span className="text-6xl md:text-[5.5rem] font-bold text-slate-900 font-serif tracking-tighter leading-none">
-                        {weatherData ? weatherData.temperature : '24'}°
-                      </span>
-                      <span className="text-lg font-medium text-slate-500 mt-2 capitalize">{weatherData ? weatherData.condition : 'Rainy'}</span>
-                    </div>
-                    <div className="w-px h-20 bg-slate-300/40 mx-4"></div>
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center justify-center min-w-[110px] gap-2 px-4 py-2.5 rounded-full bg-white/60 border border-white shadow-sm">
-                        <Wind className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <span className="text-sm font-bold text-slate-700">{weatherData ? Math.round(weatherData.windSpeed) : 12} km/h</span>
-                      </div>
-                      <div className="flex items-center justify-center min-w-[110px] gap-2 px-4 py-2.5 rounded-full bg-white/60 border border-white shadow-sm">
-                        <Droplets className="w-4 h-4 text-sky-400 flex-shrink-0" />
-                        <span className="text-sm font-bold text-slate-700">{weatherData ? weatherData.humidity : 84}%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white/60 border border-white/80 rounded-[1.5rem] p-4 text-center shadow-sm">
-                    <p className="text-sm text-slate-700 font-medium">
-                      {reasoning ? reasoning : 'Your vibe today is influenced by the weather, creating a perfect mood for curated tracks.'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Real-time Clock Card */}
-                <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col items-center justify-center h-full relative">
-                  <div className="absolute top-8 left-8">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Local Time</span>
-                  </div>
-                  
-                  <div className="relative w-36 h-36 mb-6 mt-4 drop-shadow-md">
-                    <svg className="w-full h-full" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="48" fill="rgba(255,255,255,0.5)" stroke="rgba(255,255,255,0.8)" strokeWidth="2" />
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <line key={i} x1="50" y1="8" x2="50" y2={i % 3 === 0 ? "14" : "11"} stroke={i % 3 === 0 ? "#475569" : "rgba(71,85,105,0.4)"} strokeWidth={i % 3 === 0 ? "2.5" : "1.5"} transform={`rotate(${i * 30} 50 50)`} />
-                      ))}
-                      <circle cx="50" cy="50" r="3" fill="#f43f5e" className="z-10" />
-                      <line x1="50" y1="50" x2="50" y2="28" stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round" transform={`rotate(${hourDeg} 50 50)`} />
-                      <line x1="50" y1="50" x2="50" y2="18" stroke="#475569" strokeWidth="3" strokeLinecap="round" transform={`rotate(${minDeg} 50 50)`} />
-                      <line x1="50" y1="58" x2="50" y2="12" stroke="#f43f5e" strokeWidth="1.5" strokeLinecap="round" transform={`rotate(${secDeg} 50 50)`} />
-                    </svg>
-                  </div>
-                  <h3 className="text-[3rem] font-bold text-slate-900 tracking-tighter font-serif leading-none">{formattedTime}</h3>
-                </div>
-              </div>
-
-              {/* Playlist Section */}
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-slate-900">Curated <span className="text-rose-500 font-serif italic font-normal">for you</span></h3>
-                  <button className="text-sm font-bold text-slate-400 hover:text-rose-500 transition-colors">View all &rarr;</button>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {(curatedSongs.length > 0 ? curatedSongs : [1,2,3,4,5,6].map(id=>({id: String(id), title: 'Loading...', artist: 'Please wait', album: 'Queue', artwork: covers.aurora})) as Song[]).map((song) => (
-                    <div key={song.id} onClick={() => playTrack(song, curatedSongs)} className="bg-white/60 backdrop-blur-xl border border-white/60 rounded-[1.5rem] p-3.5 shadow-sm hover:shadow-lg hover:bg-white transition-all cursor-pointer flex items-center gap-4 group">
-                      <div className="w-16 h-16 rounded-[1rem] overflow-hidden relative flex-shrink-0 shadow-sm border border-white">
-                        <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-[1px]">
-                          <div className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-md">
-                            {currentTrack?.id === song.id && isAudioPlaying ? <Pause className="w-3.5 h-3.5 text-slate-900" /> : <Play className="w-3.5 h-3.5 text-slate-900 ml-0.5" />}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0 pr-2">
-                        <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest truncate mb-0.5">{song.album}</p>
-                        <h4 className="text-sm font-bold text-slate-900 truncate">{song.title}</h4>
-                        <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{song.artist}</p>
-                      </div>
-                      
-                      {currentTrack?.id === song.id && isAudioPlaying && (
-                        <div className="pr-1">
-                          <Equalizer bars={3} active className="text-rose-500" />
-                        </div>
-                      )}
-                      
-                      {/* Cập nhật lại nút Heart, gán e và song chuẩn xác */}
-                      <button onClick={(e) => handleToggleFavorite(e, song)} className="flex-shrink-0 p-2 transition-all z-10 hover:scale-110">
-                        <Heart className={`w-5 h-5 transition-colors ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500 drop-shadow-sm' : 'text-slate-300 hover:text-rose-500 hover:bg-white/50 rounded-full'}`} />
-                      </button>
-
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── AI SCAN TAB ─── */}
-          {activeNav === 'ai-scan' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="h-[calc(100vh-220px)] flex flex-col">
-              <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex-1 flex flex-col lg:flex-row p-6 lg:p-8 gap-8 overflow-hidden relative">
-                
-                <motion.button
-                  layout onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex flex-col items-center justify-center bg-white/40 border-[3px] border-white/70 shadow-[inset_0_2px_15px_rgba(255,255,255,0.8)] rounded-[2rem] hover:bg-white/60 hover:shadow-[inset_0_2px_20px_rgba(255,255,255,1)] transition-all flex-shrink-0 overflow-hidden group ${uploadedImage ? 'w-full lg:w-[30%] h-40 lg:h-full' : 'w-full h-full'}`}
-                >
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  <div className={`${uploadedImage ? 'w-12 h-12 mb-3' : 'w-16 h-16 mb-4'} rounded-full bg-gradient-to-br from-white to-slate-50 shadow-md border border-white flex items-center justify-center group-hover:scale-105 transition-transform`}>
-                    <Camera className={`${uploadedImage ? 'w-5 h-5' : 'w-7 h-7'} text-slate-600`} />
-                  </div>
-                  <span className={`${uploadedImage ? 'text-sm' : 'text-base'} font-bold text-slate-800`}>Upload Photo</span>
-                  {!uploadedImage && <span className="text-sm font-medium text-slate-500 mt-2">Let AI read the vibe</span>}
-                </motion.button>
-
-                <AnimatePresence mode="wait">
-                  {uploadedImage && (
-                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4 }} className="flex-1 min-h-0 min-w-0 relative bg-white/40 backdrop-blur-3xl rounded-[2rem] border border-white/80 shadow-lg overflow-hidden flex flex-col">
-                      
-                      <div className="absolute inset-0 z-0 overflow-hidden">
-                         <img src={uploadedImage} alt="bg" className="w-full h-full object-cover opacity-20 filter blur-xl scale-110" />
-                         <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-white/70" />
-                      </div>
-
-                      <div className="relative z-10 flex flex-col h-full">
-                        {isAnalyzing ? (
-                          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                            <div className="relative w-20 h-20 mb-5 drop-shadow-md">
-                              <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="4" />
-                                <circle cx="32" cy="32" r="28" fill="none" stroke="url(#grad)" strokeWidth="4" strokeLinecap="round" strokeDasharray="175" strokeDashoffset={`${175 * (1 - scanProgress / 100)}`} className="transition-all duration-100" />
-                                <defs><linearGradient id="grad"><stop offset="0%" stopColor="#38bdf8"/><stop offset="100%" stopColor="#fb7185"/></linearGradient></defs>
-                              </svg>
-                              <div className="absolute inset-0 flex items-center justify-center"><Sparkles className="w-6 h-6 text-rose-500 animate-pulse" /></div>
-                            </div>
-                            <span className="font-bold text-slate-900 text-lg">Extracting Vibe...</span>
-                            <span className="text-sm font-bold text-slate-500 mt-1">{scanProgress}%</span>
-                          </div>
-                        ) : apiError ? (
-                          <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-                            <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-                            <p className="text-lg text-slate-900 font-bold mb-2">Analysis Failed</p>
-                            <p className="text-sm text-slate-600 font-medium mb-6">{apiError}</p>
-                            <button onClick={() => { setUploadedImage(null); setApiError(null); }} className="px-6 py-2.5 bg-rose-500 text-white text-sm font-bold rounded-full shadow-lg hover:bg-rose-600 hover:-translate-y-0.5 transition-transform">Try again</button>
-                          </div>
-                        ) : scanResults && scanResults.length > 0 ? (
-                          <>
-                            <div className="px-6 py-4 border-b border-white/50 bg-white/40 backdrop-blur-md flex justify-between items-center flex-shrink-0 z-20">
-                              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" /> Matched · {scanResults.length} tracks
-                              </span>
-                              <button onClick={() => { setUploadedImage(null); setScanResults(null); }} className="text-xs font-bold text-slate-500 hover:text-rose-500 transition-colors">Reset</button>
-                            </div>
-                            
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide relative z-10">
-                                {scanResults.map((song) => (
-                                  <div key={song.id} onClick={() => playTrack(song, scanResults)} className="flex items-center gap-4 p-3 bg-white/60 border border-white/60 rounded-[1.25rem] hover:bg-white shadow-sm hover:shadow-md transition-all cursor-pointer group">
-                                    <ImageWithFallback src={song.artwork} alt={song.title} className="w-14 h-14 rounded-xl object-cover shadow-sm border border-white" />
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className="text-sm font-bold text-slate-900 truncate">{song.title}</h4>
-                                      <p className="text-xs font-medium text-slate-500 truncate mt-0.5">{song.artist}</p>
-                                    </div>
-                                    
-                                    {currentTrack?.id === song.id && isAudioPlaying ? <Equalizer bars={3} active className="text-rose-500 mr-1" /> : <Play className="w-5 h-5 text-slate-400 group-hover:text-rose-500 mr-1 transition-colors" />}
-                                    
-                                    {/* Sửa lại hàm onClick tương tự trên này */}
-                                    <button onClick={(e) => handleToggleFavorite(e, song)} className="flex-shrink-0 p-2 transition-all z-10 hover:scale-110">
-                                      <Heart className={`w-5 h-5 transition-colors ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500 drop-shadow-sm' : 'text-slate-300 hover:text-rose-500 hover:bg-white/50 rounded-full'}`} />
-                                    </button>
-                                  </div>
-                                ))}
-                            </div>
-                          </>
-                        ) : null}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── PROFILE TAB ─── */}
-          {activeNav === 'profile' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex flex-col gap-6 lg:gap-8">
-              
-              {/* Profile Identity Card */}
-              <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-                <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-rose-200/40 to-sky-200/40 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="relative flex-shrink-0">
-                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-2 bg-white/60 backdrop-blur-sm border border-white/80 shadow-xl">
-                    <img src={user?.imageUrl || covers.avatarDefault} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                  </div>
-                  <div className="absolute bottom-2 right-2 w-10 h-10 bg-gradient-to-br from-rose-400 to-rose-600 rounded-full flex items-center justify-center border-4 border-white text-white shadow-md">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="text-center md:text-left flex-1 relative z-10">
-                  <h2 className="text-3xl md:text-4xl font-bold text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
-                    {!isLoaded ? 'Loading...' : user?.firstName || 'Guest User'}
-                  </h2>
-                  <p className="text-slate-500 font-medium mt-1 text-lg">{user?.primaryEmailAddress?.emailAddress || '@guest_vibes'}</p>
-                  
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-6">
-                    <div className="px-4 py-2 rounded-full bg-white/60 border border-white/80 text-sm font-bold text-slate-700 shadow-sm flex items-center gap-2">
-                      <Disc3 className="w-4 h-4 text-sky-500" /> 128 Resonances
-                    </div>
-                    <div className="px-4 py-2 rounded-full bg-white/60 border border-white/80 text-sm font-bold text-slate-700 shadow-sm flex items-center gap-2">
-                      <Heart className="w-4 h-4 text-rose-500 fill-rose-500" /> {favorites.length} Favorites
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative z-10 flex-shrink-0 mt-4 md:mt-0">
-                   <button className="px-6 py-3 rounded-full bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-transform hover:-translate-y-0.5 shadow-xl shadow-slate-900/20">
-                     Edit Profile
-                   </button>
-                </div>
-              </div>
-
-              {/* Horizontal Coverflow Slideshow for Favorite Tracks */}
-              <div className="bg-white/50 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 py-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden flex flex-col items-center">
-                <div className="flex items-center justify-between w-full px-10 mb-8 z-20">
-                  <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                     <Heart className="w-7 h-7 text-rose-500 fill-rose-500 drop-shadow-sm" /> 
-                     Favorite <span className="font-serif italic font-normal text-rose-500">Tracks</span>
-                  </h3>
-                </div>
-
-                {isFavoritesLoading ? (
-                  <div className="w-full h-[320px] flex items-center justify-center">
-                    <Loader className="w-8 h-8 text-rose-500 animate-spin" />
-                  </div>
-                ) : favorites.length === 0 ? (
-                  <div className="w-full h-[320px] flex items-center justify-center flex-col gap-4">
-                    <Heart className="w-12 h-12 text-slate-300" />
-                    <p className="text-slate-500 font-medium">No favorites yet. Start adding your favorite tracks!</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="relative w-full h-[320px] flex items-center justify-center">
-                      {favorites.map((song, i) => {
-                        const offset = i - activeProfileIdx;
-                        const absOffset = Math.abs(offset);
-                        const isActive = offset === 0;
-
-                        return (
-                          <motion.div
-                            key={song.id}
-                            onClick={() => {
-                              if (isActive) playTrack(song, favorites);
-                              else setActiveProfileIdx(i);
-                            }}
-                            animate={{
-                              x: offset * 160,
-                              scale: isActive ? 1 : Math.max(0.75 - absOffset * 0.1, 0.5),
-                              opacity: absOffset > 2 ? 0 : isActive ? 1 : Math.max(0.6 - absOffset * 0.2, 0),
-                              zIndex: 10 - absOffset
-                            }}
-                            transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
-                            className={`absolute w-52 p-4 bg-white/60 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col items-center group ${absOffset > 2 ? 'pointer-events-none' : 'cursor-pointer'}`}
-                          >
-                            <div className="w-full aspect-square rounded-[1.5rem] overflow-hidden mb-4 relative shadow-sm border border-white/50">
-                              <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                              <div className={`absolute inset-0 bg-slate-900/20 flex items-center justify-center transition-opacity backdrop-blur-[2px] ${isActive ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
-                                 <div className="w-12 h-12 bg-white/95 rounded-full flex items-center justify-center shadow-lg text-slate-900 transition-transform hover:scale-105">
-                                   {currentTrack?.id === song.id && isAudioPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-                                 </div>
-                              </div>
-                            </div>
-                            <h4 className="text-base font-bold text-slate-900 truncate w-full text-center">{song.title}</h4>
-                            <p className="text-xs font-medium text-slate-500 truncate w-full text-center mt-1">{song.artist}</p>
-                            
-                            {isActive && (
-                              <button onClick={(e) => handleToggleFavorite(e, song)} className="mt-4 w-10 h-10 rounded-full bg-white border border-rose-100 shadow-sm flex items-center justify-center hover:bg-rose-50 transition-colors z-20 hover:scale-110">
-                                 <Heart className={`w-5 h-5 transition-colors ${favoritedSongIds.has(song.id) ? 'text-rose-500 fill-rose-500' : 'text-slate-300'} drop-shadow-sm`} />
-                              </button>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Slideshow Nav Controls */}
-                    <div className="flex items-center justify-center gap-6 mt-6 z-20">
-                      <button onClick={() => setActiveProfileIdx(Math.max(0, activeProfileIdx - 1))} className="p-2 rounded-full bg-white/60 border border-white hover:bg-white shadow-sm text-slate-400 hover:text-slate-700 transition-colors" disabled={activeProfileIdx === 0}>
-                        <ChevronLeft className="w-6 h-6" />
-                      </button>
-                      <div className="flex gap-2">
-                        {favorites.map((_, idx) => (
-                           <button key={idx} onClick={() => setActiveProfileIdx(idx)} className={`h-2 rounded-full transition-all duration-300 ${idx === activeProfileIdx ? 'bg-rose-500 w-6' : 'bg-slate-300 w-2 hover:bg-slate-400'}`} />
-                        ))}
-                      </div>
-                      <button onClick={() => setActiveProfileIdx(Math.min(favorites.length - 1, activeProfileIdx + 1))} className="p-2 rounded-full bg-white/60 border border-white hover:bg-white shadow-sm text-slate-400 hover:text-slate-700 transition-colors" disabled={activeProfileIdx === favorites.length - 1}>
-                        <ChevronRight className="w-6 h-6" />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-
-            </motion.div>
-          )}
-
+      {/* Main Content */}
+      <main className="flex-1 ml-0 md:ml-80 flex flex-col z-10 relative">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between mb-8">
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 hover:bg-white/15 transition-colors\"
+          >
+            <Menu size={24} />
+          </button>
+          <h2 className="text-3xl md:text-4xl font-semibold drop-shadow-md">
+            Good morning, <span className="text-white">{user?.firstName || 'Alex'}</span>
+          </h2>
+          <div className="w-10"></div>
         </div>
+
+        {/* HOME TAB */}
+        {activeNav === 'home' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex-1 flex flex-col pb-40">
+            
+            {/* Top Widgets */}
+            <div className="flex flex-col md:flex-row gap-6 mb-8">
+              {/* Weather Card */}
+              <div className="md:flex-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                <p className="text-white/80 text-sm mb-4">Local Weather & Mood</p>
+                <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
+                  <div className="flex items-center gap-4">
+                    {(() => {
+                      const { icon: IconComponent, iconColor } = getWeatherAssets(weatherData);
+                      return <IconComponent className={`${iconColor} w-16 h-16`} />;
+                    })()}
+                    <span className="text-5xl font-light">{weatherData?.temperature || 22}°</span>
+                  </div>
+                  <div>
+                    <p className="text-xl font-semibold">{session?.charAt(0).toUpperCase() + session?.slice(1)} Vibe</p>
+                    <p className="text-white/70 text-sm">{'Perfect for music'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Time Card */}
+              <div className="md:flex-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                <p className="text-white/80 text-sm mb-4">Local Time</p>
+                <div className="flex flex-col relative z-10">
+                  <h3 className="text-5xl font-light tracking-wider mb-2">
+                    {clockTime?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) || '--:--'}
+                  </h3>
+                  <p className="text-white/70 text-sm">
+                    {clockTime?.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Curated Tracks Grid */}
+            <div className="flex-1 flex flex-col">
+              <h3 className="text-xl font-medium mb-4 drop-shadow-md">Curated for you</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 flex-1 overflow-y-auto pb-4">
+                {(curatedSongs.length > 0 ? curatedSongs.slice(0, 40) : Array(40).fill(null).map((_, i) => ({
+                  id: String(i),
+                  title: 'Loading...',
+                  artist: 'Please wait',
+                  album: '',
+                  artwork: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=200'
+                })) as Song[]).map((track) => (
+                  <div 
+                    key={track.id}
+                    className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-2 hover:bg-white/15 transition-all group flex flex-col h-full relative"
+                  >
+                    <button 
+                      onClick={(e) => handleToggleFavorite(track, e)} 
+                      className="absolute top-2 right-2 p-1 hover:bg-white/10 transition-colors z-10"
+                    >
+                      <Heart className={`w-4 h-4 ${favoritedSongIds.has(track.id) ? 'fill-rose-500 text-rose-500' : 'text-white/40 hover:text-rose-500'} transition-colors`} />
+                    </button>
+                    <div 
+                      onClick={() => playTrack(track, curatedSongs.length > 0 ? curatedSongs : [])}
+                      className="cursor-pointer flex-1 flex flex-col"
+                    >
+                      <div className="aspect-square rounded-xl overflow-hidden mb-3 relative">
+                        <ImageWithFallback 
+                          src={track.artwork} 
+                          alt={track.title} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Play className="text-white w-6 h-6" fill="currentColor" />
+                        </div>
+                      </div>
+                      <h4 className="font-medium text-xs truncate">{track.title}</h4>
+                      <p className="text-white/60 text-[10px] truncate">{track.artist}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* AI SCAN TAB */}
+        {activeNav === 'ai-scan' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex-1 flex flex-col pb-40">
+            <h2 className="text-4xl font-semibold mb-8 drop-shadow-md">AI Vibe Scan</h2>
+            
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-8 flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden relative\">
+              
+              {/* Upload Area */}
+              <motion.button
+                onClick={() => fileInputRef.current?.click()}
+                className={`relative flex flex-col items-center justify-center bg-white/8 border-2 border-white/20 rounded-2xl hover:bg-white/10 transition-all flex-shrink-0 ${uploadedImage ? 'w-full lg:w-[40%] h-96' : 'w-full lg:w-full h-96'}`}
+              >
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform mb-4">
+                  <Camera className="w-7 h-7 text-white/70" />
+                </div>
+                <span className="text-lg font-bold">{uploadedImage ? 'Change' : 'Upload'} Photo</span>
+                <span className="text-sm font-medium text-white/60 mt-2">Drag & Drop or Click</span>
+              </motion.button>
+
+              <AnimatePresence mode="wait">
+                {uploadedImage && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 h-96 flex flex-col bg-white/8 border border-white/15 rounded-2xl overflow-hidden\">
+                    
+                    {isAnalyzing ? (
+                      <div className="flex-1 flex flex-col items-center justify-center">
+                        <Loader className="w-12 h-12 text-blue-400 animate-spin mb-4" />
+                        <span className="font-bold text-lg">Analyzing Vibe...</span>
+                        <span className="text-sm text-white/60 mt-2">{scanProgress}%</span>
+                      </div>
+                    ) : scanResults && scanResults.length > 0 ? (
+                      <>
+                        <div className="p-4 border-b border-white/15 bg-white/5 flex justify-between items-center flex-shrink-0\">
+                          <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
+                            Matched · {scanResults.length} tracks
+                          </span>
+                          <button onClick={() => setUploadedImage(null)} className="text-xs font-bold text-white/60 hover:text-white">Reset</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                          {scanResults.map((song) => (
+                            <div 
+                              key={song.id}
+                              onClick={() => playTrack(song, scanResults)}
+                              className="flex items-center gap-4 p-3 bg-white/8 border border-white/15 rounded-xl hover:bg-white/10 transition-all cursor-pointer group"
+                            >
+                              <ImageWithFallback src={song.artwork} alt={song.title} className="w-12 h-12 rounded-lg object-cover border border-white/10" />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-bold truncate">{song.title}</h4>
+                                <p className="text-xs text-white/60 truncate">{song.artist}</p>
+                              </div>
+                              <button onClick={(e) => handleToggleFavorite(song, e)} className="flex-shrink-0 p-2">
+                                <Heart className={`w-5 h-5 ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500' : 'text-white/40 hover:text-rose-500'} transition-colors`} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : apiError ? (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+                        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+                        <p className="text-lg font-bold mb-2">Analysis Failed</p>
+                        <p className="text-sm text-white/60 mb-6">{apiError}</p>
+                        <button onClick={() => { setUploadedImage(null); setApiError(null); }} className="px-6 py-2 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition">
+                          Try Again
+                        </button>
+                      </div>
+                    ) : null}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+
+        {/* PROFILE TAB */}
+        {activeNav === 'profile' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex-1 flex flex-col pb-40">
+            <h2 className="text-4xl font-semibold mb-8 drop-shadow-md">Your Profile</h2>
+
+            {/* Profile Card */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-8 mb-8\">
+              <div className="flex flex-col md:flex-row items-center gap-8">
+                <div className="relative flex-shrink-0">
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-white/10 border-2 border-white/20\">
+                    <img src={user?.imageUrl || 'https://i.pravatar.cc/150?u=guest'} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                  </div>
+                </div>
+
+                <div className="relative z-10 text-center md:text-left flex-1">
+                  <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                    {user?.firstName || 'Guest User'}
+                  </h2>
+                  <p className="text-white/60 font-medium text-lg mb-6">{user?.primaryEmailAddress?.emailAddress || '@guest'}</p>
+                  
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                    <div className="px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-bold flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-rose-400 fill-rose-400" /> {favorites.length} Favorites
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Soundtrack Slideshow */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-8 flex-1 flex flex-col\">
+              <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
+                <Heart className="w-7 h-7 text-rose-500 fill-rose-500" /> 
+                Favorite Tracks
+              </h3>
+
+              {isFavoritesLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <Loader className="w-8 h-8 text-blue-400 animate-spin" />
+                </div>
+              ) : favorites.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center flex-col gap-4">
+                  <Heart className="w-12 h-12 text-white/30" />
+                  <p className="text-white/60 font-medium">No favorites yet. Add some tracks!</p>
+                </div>
+              ) : (
+                <>
+                  <div className="relative w-full h-80 flex items-center justify-center mb-8">
+                    {favorites.map((song, i) => {
+                      const offset = i - activeProfileIdx;
+                      const isActive = offset === 0;
+                      const absOffset = Math.abs(offset);
+
+                      return (
+                        <motion.div
+                          key={song.id}
+                          onClick={() => {
+                            if (isActive) playTrack(song, favorites);
+                            else setActiveProfileIdx(i);
+                          }}
+                          animate={{
+                            x: offset * 180,
+                            scale: isActive ? 1 : Math.max(0.7 - absOffset * 0.1, 0.4),
+                            opacity: absOffset > 2 ? 0 : isActive ? 1 : Math.max(0.5 - absOffset * 0.2, 0),
+                            zIndex: 10 - absOffset
+                          }}
+                          transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
+                          className={`absolute w-56 bg-white/10 border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-4 flex flex-col items-center group ${absOffset > 2 ? 'pointer-events-none' : 'cursor-pointer hover:bg-white/15'}`}
+                        >
+                          <div className="w-full aspect-square rounded-xl overflow-hidden mb-4 relative border border-white/15\">
+                            <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            {isActive && (
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center text-black">
+                                  {currentTrack?.id === song.id && isAudioPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" fill="currentColor" />}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <h4 className="text-base font-bold truncate w-full text-center">{song.title}</h4>
+                          <p className="text-xs text-white/60 truncate w-full text-center mt-1">{song.artist}</p>
+                          
+                          {isActive && (
+                            <button onClick={(e) => handleToggleFavorite(song, e)} className="mt-4 w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/15 transition-colors">
+                              <Heart className={`w-5 h-5 ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500' : 'text-white/70'}`} />
+                            </button>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+
       </main>
 
-      {/* ─── Floating Bottom Player (Island Design) ──────────────────────────────── */}
-      <div className={`fixed bottom-6 right-0 z-50 pointer-events-none flex justify-center px-4 transition-all duration-300 ${sidebarOpen ? 'left-0 md:left-[260px]' : 'left-0'}`}>
-        <div className="pointer-events-auto w-full max-w-[90%] md:max-w-3xl bg-white/80 backdrop-blur-3xl border border-white/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] rounded-full px-4 py-3 flex items-center justify-between gap-4">
+      {/* Bottom Player */}
+      <div className="fixed bottom-6 left-6 right-6 md:left-80 md:right-6 z-50 pointer-events-none flex justify-center">
+        <div className="pointer-events-auto w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] rounded-full px-6 py-3 flex items-center justify-between gap-6\">
           
-          <div className="flex items-center gap-3 w-[30%] min-w-0">
-            <div className={`w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-md border border-white ${isAudioPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`}>
-              <ImageWithFallback src={currentTrack?.artwork || covers.desert} alt="Cover" className="w-full h-full object-cover" />
+          {/* Track Info */}
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className={`w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border border-white/15 ${isAudioPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '4s' }}>
+              <ImageWithFallback src={currentTrack?.artwork || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=100'} alt="Now Playing" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0 hidden sm:block flex-1">
-              <p className="text-sm font-bold text-slate-900 truncate">{currentTrack?.title || 'No track'}</p>
-              <p className="text-xs font-medium text-slate-500 truncate">{currentTrack?.artist || 'Ready to play'}</p>
+              <p className="text-xs uppercase tracking-wider text-white/60 mb-1">Now Playing</p>
+              <p className="font-bold text-sm truncate">{currentTrack?.title || 'Ready to play'}</p>
+              <p className="text-xs text-white/60 truncate">{currentTrack?.artist || 'Select a track'}</p>
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center gap-1.5 px-2 max-w-sm">
-            <div className="flex items-center gap-6">
-              <button onClick={handlePrevTrack} className="text-slate-400 hover:text-slate-800 transition-colors"><SkipBack className="w-4 h-4 fill-current" /></button>
-              <button onClick={toggleAudioPlayPause} className="w-10 h-10 rounded-full bg-slate-900 hover:bg-slate-800 flex items-center justify-center text-white shadow-md transition-transform hover:scale-105">
-                {isAudioPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+          {/* Player Controls */}
+          <div className="flex flex-col items-center flex-2 gap-2">
+            <div className="flex items-center gap-4">
+              <button onClick={handlePrevTrack} className="text-white/70 hover:text-white transition-colors">
+                <SkipBack size={20} fill="currentColor" />
               </button>
-              <button onClick={handleNextTrack} className="text-slate-400 hover:text-slate-800 transition-colors"><SkipForward className="w-4 h-4 fill-current" /></button>
+              <button 
+                onClick={toggleAudioPlayPause}
+                className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+              >
+                {isAudioPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+              </button>
+              <button onClick={handleNextTrack} className="text-white/70 hover:text-white transition-colors">
+                <SkipForward size={20} fill="currentColor" />
+              </button>
             </div>
-            <div className="flex items-center gap-3 w-full">
-              <span className="text-[10px] font-bold text-slate-400 w-8 text-right">{currentTrack ? formatTime(audioElapsed) : '0:00'}</span>
-              <div className="flex-1 h-[4px] bg-slate-200/60 rounded-full overflow-hidden cursor-pointer group" onClick={handleProgressClick}>
-                <div className="h-full bg-gradient-to-r from-rose-400 to-rose-500 rounded-full relative transition-all" style={{ width: `${currentTrack ? audioProgress : 0}%` }} />
+            <div className="flex items-center gap-2 w-64">
+              <span className="text-xs text-white/50 w-8 text-right">{formatTime(audioElapsed)}</span>
+              <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden cursor-pointer group" onClick={handleProgressClick}>
+                <div className="h-full bg-white rounded-full" style={{ width: `${currentTrack ? audioProgress : 0}%` }} />
               </div>
-              <span className="text-[10px] font-bold text-slate-400 w-8">{currentTrack ? formatTime(audioDuration) : '0:00'}</span>
+              <span className="text-xs text-white/50 w-8">{formatTime(audioDuration)}</span>
             </div>
           </div>
 
-          <div className="w-[30%] flex justify-end pr-2">
-             <Equalizer bars={4} active={isAudioPlaying} className="text-slate-400 hidden md:flex" />
+          {/* Equalizer */}
+          <div className="flex items-center gap-2 flex-1 justify-end opacity-60 hidden lg:flex">
+            <div className="flex items-end gap-[2px] h-6">
+              {[40, 70, 40, 100, 60, 80, 30, 90].map((h, i) => (
+                <motion.div 
+                  key={i} 
+                  className="w-1 bg-white rounded-full" 
+                  animate={isAudioPlaying ? { scaleY: [0.4, 1, 0.6] } : { scaleY: 0.4 }}
+                  transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.08 }}
+                  style={{ height: '24px' }}
+                />
+              ))}
+            </div>
+            <Volume2 size={20} />
           </div>
         </div>
       </div>
 
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob { animation: blob 15s infinite alternate; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
-      `}</style>
       <audio ref={audioRef} crossOrigin="anonymous" />
     </div>
   );
