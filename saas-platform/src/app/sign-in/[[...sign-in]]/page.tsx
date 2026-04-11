@@ -10,6 +10,7 @@ function SignInContent() {
         src="/assets/weather/daisy.jfif" 
         alt="Auth Background"
         fill
+        unoptimized
         priority
         className="object-cover object-center absolute inset-0 z-0"
       />
