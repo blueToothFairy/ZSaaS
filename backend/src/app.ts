@@ -8,6 +8,7 @@ import weatherTimeRouter from './modules/weather-time/weather-time.route.js';
 import profileRouter from './modules/profile/profile.route.js';
 import healthRouter from './modules/health/health.route.js';
 import adminRouter from './modules/admin/admin.route.js';
+import keepaliveRouter from './modules/keepalive/keepalive.route.js';
 
 import { createAuthenticatedLimiter, createPublicLimiter } from './shared/middleware/rateLimiting.js';
 
@@ -39,6 +40,8 @@ app.use('/api/vibe-scan', vibeScannerRouter);
 app.use('/api/song', songRouter);
 app.use('/api/weather-time', weatherTimeRouter);
 app.use('/api/profile', profileRouter);
+// Public keep-alive endpoint (root-level)
+app.use('/', keepaliveRouter);
 
 /**
  * Attach rate limiters to API routes after Redis initialization

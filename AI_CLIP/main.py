@@ -64,6 +64,12 @@ def startup_event():
     print_memory_usage("After warmup")
 
 
+@app.get('/ping')
+async def ping():
+    """Lightweight ping endpoint used by keep-alive pings."""
+    return {"status": "ok"}
+
+
 @app.post("/extract-vibes")
 async def extract(file: UploadFile = File(...)):
 
