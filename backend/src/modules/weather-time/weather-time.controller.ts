@@ -14,7 +14,6 @@ export default class WeatherTimeController {
     try {
       const clientCountryCode = resolveCountryCodeFromRequest(req);
 
-      // Prefer common proxy headers (Vercel, Cloudflare, nginx)
       const xfwdHeader =
         req.headers['x-forwarded-for'] ||
         req.headers['x-real-ip'] ||
@@ -27,27 +26,38 @@ export default class WeatherTimeController {
             ? xfwdHeader[0]
             : undefined;
 
-      const ipFromHeader = xfwd?.split(',')[0].trim();
-      // remoteAddress can be in forms like ::ffff:127.0.0.1 or ::1
+      // FIX: Added optional chaining and a fallback to handle 'possibly undefined'
+      const ipFromHeader = xfwd?.split(',')[0]?.trim();
+      
       const rawRemote = req.socket && (req.socket.remoteAddress as string | undefined);
       const remoteIpRaw = ipFromHeader || rawRemote || undefined;
 
-      // Normalize IPv6-mapped IPv4 and strip port if present
       let remoteIp: string | undefined = remoteIpRaw;
       if (remoteIp) {
-        // remove port if like '1.2.3.4:5678' or '[::1]:1234'
         remoteIp = remoteIp.replace(/^\[(.*)\](?::\d+)?$/, '$1');
         remoteIp = remoteIp.split(':').slice(-4).join(':');
-        // Handle ::ffff:IPv4
         const v4match = remoteIp.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
         if (v4match) remoteIp = v4match[1];
-        remoteIp = remoteIp.split(':')[0];
+        
+        // FIX: remoteIp is guaranteed to be string here due to the 'if (remoteIp)' block,
+        // but re-assigning it helps TS keep track of the narrowing.
+        remoteIp = remoteIp!.split(':')[0];
       }
 
-      // Accept timezone override from frontend (preferred)
-      const tz = typeof req.query?.tz === 'string' ? req.query.tz : undefined;
+      const tzQuery = req.query?.tz;
+      const tz = typeof tzQuery === 'string' ? tzQuery : undefined;
 
-      const vibeData = await this.weatherTimeService.getTodayVibe(this.songSearch, clientCountryCode, { tz, ip: remoteIp });
+      // FIX: Handling exactOptionalPropertyTypes. 
+      // If the values are undefined, we don't include the keys in the object at all.
+      const serviceOptions: { tz?: string; ip?: string } = {};
+      if (tz !== undefined) serviceOptions.tz = tz;
+      if (remoteIp !== undefined) serviceOptions.ip = remoteIp;
+
+      const vibeData = await this.weatherTimeService.getTodayVibe(
+        this.songSearch, 
+        clientCountryCode, 
+        serviceOptions
+      );
 
       res.status(200).json({
         success: true,
