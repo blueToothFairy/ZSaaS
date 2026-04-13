@@ -15,5 +15,6 @@ export interface WeatherData {
 }
 
 export default interface IWeatherService {
-  getCurrentWeather(): Promise<WeatherData>;
+  // options: tz (timezone string), ip (client IP)
+  getCurrentWeather(options?: { tz?: string; ip?: string }): Promise<WeatherData>;
 }

@@ -9,9 +9,10 @@ export default class WeatherTimeService {
     private readonly weatherGenreService: IWeatherGenreService
   ) { }
 
-  async getTodayVibe(songSearch: ISongSearch, clientCountryCode?: string): Promise<WeatherTimeData> {
-    // Get current weather
-    const weather = await this.weatherService.getCurrentWeather();
+  // options: tz (timezone string from client), ip (client IP from headers)
+  async getTodayVibe(songSearch: ISongSearch, clientCountryCode?: string, options?: { tz?: string; ip?: string }): Promise<WeatherTimeData> {
+    // Get current weather (may use client tz/ip)
+    const weather = await this.weatherService.getCurrentWeather(options);
     console.log("Current weather:", weather);
 
     // Extract hour from currentTime (format: YYYY-MM-DDTHH:MM)
@@ -57,7 +58,7 @@ export default class WeatherTimeService {
       return 'morning';
     } else if (hour >= 12 && hour < 18) {
       return 'afternoon';
-    } else if (hour >= 18 && hour < 24) {
+    } else if (hour >= 18 && hour < 21) {
       return 'evening';
     } else {
       return 'night';

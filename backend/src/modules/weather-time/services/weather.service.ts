@@ -5,16 +5,18 @@ export default class WeatherService implements IWeatherService {
   private readonly geoLocationUrl = 'http://ip-api.com/json';
   private readonly weatherUrl = 'https://api.open-meteo.com/v1/forecast';
 
-  async getCurrentWeather(): Promise<WeatherData> {
+  // Accept optional options: tz (client timezone) and ip (client IP)
+  async getCurrentWeather(options?: { tz?: string; ip?: string }): Promise<WeatherData> {
     try {
-      // Get location from IP
-      const geoData = await this.getLocationFromIP();
+      // Get location from IP (prefer provided ip)
+      const geoData = await this.getLocationFromIP(options?.ip);
 
-      // Get weather data for the location
+      // Get weather data for the location, pass timezone if provided
       const weatherData = await this.getWeatherForLocation(
         geoData.lat,
         geoData.lon,
-        geoData.countryCode
+        geoData.countryCode,
+        options?.tz
       );
 
       return {
@@ -32,13 +34,22 @@ export default class WeatherService implements IWeatherService {
     }
   }
 
-  private async getLocationFromIP() {
+  private async getLocationFromIP(ip?: string) {
     try {
-      const response = await axios.get(this.geoLocationUrl, {
+      const cleanedIp = ip ? ip.trim() : undefined;
+      const url = cleanedIp ? `${this.geoLocationUrl}/${encodeURIComponent(cleanedIp)}` : this.geoLocationUrl;
+      console.log('Resolving geo for IP, calling:', url);
+      const response = await axios.get(url, {
         timeout: 5000,
       });
 
+      // Log raw response for debugging when geolocation fails
+      if (!response || !response.data) {
+        console.warn('ip-api returned empty response for', cleanedIp);
+      }
+
       if (response.data.status !== 'success') {
+        console.warn('ip-api lookup failed, response:', response.data);
         // Fallback to default location if geolocation fails
         return {
           lat: 40.7128,
@@ -48,11 +59,12 @@ export default class WeatherService implements IWeatherService {
         };
       }
 
-      console.log({
+      console.log('ip-api result:', {
         lat: response.data.lat,
         lon: response.data.lon,
         country: response.data.country,
         countryCode: response.data.countryCode,
+        query: response.data.query,
       });
 
       return {
@@ -76,7 +88,8 @@ export default class WeatherService implements IWeatherService {
   private async getWeatherForLocation(
     latitude: number,
     longitude: number,
-    countryCode: string
+    countryCode: string,
+    tz?: string
   ) {
     try {
       const response = await axios.get(this.weatherUrl, {
@@ -84,7 +97,7 @@ export default class WeatherService implements IWeatherService {
           latitude,
           longitude,
           current: 'temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m',
-          timezone: 'auto',
+          timezone: tz || 'auto',
         },
         timeout: 10000,
       });

@@ -130,7 +130,9 @@ export default function AppDashboard() {
   useEffect(() => {
     const fetchTodayVibe = async () => {
       try {
-        const response = await axios.get<TodayVibeResponse>('/api/weather-time/today-vibe');
+        // Send user's browser timezone so backend can compute session accurately
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const response = await axios.get<TodayVibeResponse>('/api/weather-time/today-vibe', { params: { tz } });
         if (response.data.success) {
           setWeatherData(response.data.data.weather);
           setCuratedSongs(response.data.data.songs);
