@@ -3,8 +3,8 @@ import axios from 'axios';
 import IWeatherService, { WeatherData } from '../interfaces/weather.interface.js';
 
 export default class WeatherService implements IWeatherService {
-  // use ipapi.co instead of ip-api.com
-  private readonly geoLocationUrl = 'https://ipapi.co';
+  // use ipinfo.io for IP geolocation
+  private readonly geoLocationUrl = 'https://ipinfo.io';
   private readonly restCountriesUrl = 'https://restcountries.com/v3.1/alpha';
   private readonly weatherUrl = 'https://api.open-meteo.com/v1/forecast';
 
@@ -44,36 +44,34 @@ export default class WeatherService implements IWeatherService {
   private async getLocationFromIP(ip?: string, tz?: string, clientCountryCode?: string) {
     try {
       const cleanedIp = ip ? ip.trim() : undefined;
-      // ipapi.co: /json or /{ip}/json
-      const url = cleanedIp ? `${this.geoLocationUrl}/${encodeURIComponent(cleanedIp)}/json/` : `${this.geoLocationUrl}/json/`;
+      // ipinfo.io: /json or /{ip}/json, token via env.IPINFO_TOKEN
+      const token = process.env.IPINFO_TOKEN;
+      const base = cleanedIp ? `${this.geoLocationUrl}/${encodeURIComponent(cleanedIp)}/json` : `${this.geoLocationUrl}/json`;
+      const url = token ? `${base}?token=${encodeURIComponent(token)}` : base;
       console.log('Resolving geo for IP, calling:', url);
-      const response = await axios.get(url, {
-        timeout: 5000,
-      });
+      const response = await axios.get(url, { timeout: 5000 });
 
       if (!response || !response.data) {
-        console.warn('ipapi returned empty response for', cleanedIp);
+        console.warn('ipinfo returned empty response for', cleanedIp);
       }
 
-      // ipapi.co returns latitude/longitude fields
+      // ipinfo returns `loc` as "lat,lon" string
       const data = response.data || {};
-      if (data && (data.latitude || data.lat) && (data.longitude || data.lon)) {
-        const lat = Number(data.latitude || data.lat);
-        const lon = Number(data.longitude || data.lon);
-        const country = data.country_name || data.country || 'Unknown';
-        const countryCode = (data.country_code || data.countryCode || '').toUpperCase() || 'ZZ';
+      if (data && data.loc && typeof data.loc === 'string') {
+        const parts = data.loc.split(',').map((p: string) => p.trim());
+        if (parts.length === 2) {
+          const lat = Number(parts[0]);
+          const lon = Number(parts[1]);
+          const countryCode = (data.country || '').toUpperCase() || 'ZZ';
+          const country = data.city || data.region || countryCode;
 
-        console.log('ipapi result:', { lat, lon, country, countryCode, query: data.ip || data.query });
+          console.log('ipinfo result:', { lat, lon, country, countryCode, query: data.ip });
 
-        return {
-          lat,
-          lon,
-          country,
-          countryCode,
-        };
+          return { lat, lon, country, countryCode };
+        }
       }
 
-      console.warn('ipapi lookup did not return coords, falling back to country/tz', data);
+      console.warn('ipinfo lookup did not return coords, falling back to country/tz', data);
 
       // Fallback: if clientCountryCode provided, query restcountries to get centroid
       if (clientCountryCode) {
