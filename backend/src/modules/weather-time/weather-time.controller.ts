@@ -26,7 +26,6 @@ export default class WeatherTimeController {
             ? xfwdHeader[0]
             : undefined;
 
-      // FIX: Added optional chaining and a fallback to handle 'possibly undefined'
       const ipFromHeader = xfwd?.split(',')[0]?.trim();
       
       const rawRemote = req.socket && (req.socket.remoteAddress as string | undefined);
@@ -34,21 +33,24 @@ export default class WeatherTimeController {
 
       let remoteIp: string | undefined = remoteIpRaw;
       if (remoteIp) {
-        remoteIp = remoteIp.replace(/^\[(.*)\](?::\d+)?$/, '$1');
-        remoteIp = remoteIp.split(':').slice(-4).join(':');
-        const v4match = remoteIp.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-        if (v4match) remoteIp = v4match[1];
-        
-        // FIX: remoteIp is guaranteed to be string here due to the 'if (remoteIp)' block,
-        // but re-assigning it helps TS keep track of the narrowing.
-        remoteIp = remoteIp!.split(':')[0];
+        remoteIp = remoteIp.trim();
+
+        if (remoteIp.includes(':') && remoteIp.split(':').length === 2) {
+          remoteIp = remoteIp.split(':')[0];
+        }
+
+        if (remoteIp!.startsWith('::ffff:')) {
+          remoteIp = remoteIp!.replace('::ffff:', '');
+        }
+
+        // if (remoteIp === '::1' || remoteIp === '127.0.0.1' || remoteIp === '') {
+        //   remoteIp = '116.109.28.0'; // IP fallback của VN
+        // }
       }
 
       const tzQuery = req.query?.tz;
       const tz = typeof tzQuery === 'string' ? tzQuery : undefined;
 
-      // FIX: Handling exactOptionalPropertyTypes. 
-      // If the values are undefined, we don't include the keys in the object at all.
       const serviceOptions: { tz?: string; ip?: string } = {};
       if (tz !== undefined) serviceOptions.tz = tz;
       if (remoteIp !== undefined) serviceOptions.ip = remoteIp;
