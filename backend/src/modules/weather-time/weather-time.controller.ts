@@ -52,6 +52,7 @@ export default class WeatherTimeController {
       const serviceOptions: { tz?: string; ip?: string } = {};
       if (tz !== undefined) serviceOptions.tz = tz;
       if (remoteIp !== undefined) serviceOptions.ip = remoteIp;
+      console.log('getTodayVibe request - clientCountryCode:', clientCountryCode, 'serviceOptions:', serviceOptions);
 
       const vibeData = await this.weatherTimeService.getTodayVibe(
         this.songSearch, 
