@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import axios from 'axios';
+import { isIP } from 'net';
 import WeatherTimeService from "./services/index.js";
 import ISongSearch from "../song/interfaces/song-search.interface.js";
 import { resolveCountryCodeFromRequest } from "../../shared/utils/requestCountry.js";
@@ -35,17 +36,20 @@ export default class WeatherTimeController {
       if (remoteIp) {
         remoteIp = remoteIp.trim();
 
+        // strip port if present
         if (remoteIp.includes(':') && remoteIp.split(':').length === 2) {
           remoteIp = remoteIp.split(':')[0];
         }
 
+        // strip IPv4-mapped IPv6 prefix
         if (remoteIp!.startsWith('::ffff:')) {
           remoteIp = remoteIp!.replace('::ffff:', '');
         }
 
-        // if (remoteIp === '::1' || remoteIp === '127.0.0.1' || remoteIp === '') {
-        //   remoteIp = '116.109.28.0'; // IP fallback của VN
-        // }
+        // treat loopback / local addresses as absent for geo lookup
+        if (remoteIp === '::1' || remoteIp === '127.0.0.1' || remoteIp === '') {
+          remoteIp = undefined;
+        }
       }
 
       const tzQuery = req.query?.tz;
@@ -53,7 +57,10 @@ export default class WeatherTimeController {
 
       const serviceOptions: { tz?: string; ip?: string } = {};
       if (tz !== undefined) serviceOptions.tz = tz;
-      if (remoteIp !== undefined) serviceOptions.ip = remoteIp;
+      // Only include IP if it's a non-empty, valid IP address
+      if (remoteIp && isIP(remoteIp)) {
+        serviceOptions.ip = remoteIp;
+      }
       console.log('getTodayVibe request - clientCountryCode:', clientCountryCode, 'serviceOptions:', serviceOptions);
 
       const vibeData = await this.weatherTimeService.getTodayVibe(

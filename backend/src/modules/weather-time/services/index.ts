@@ -11,8 +11,8 @@ export default class WeatherTimeService {
 
   // options: tz (timezone string from client), ip (client IP from headers)
   async getTodayVibe(songSearch: ISongSearch, clientCountryCode?: string, options?: { tz?: string; ip?: string }): Promise<WeatherTimeData> {
-    // Get current weather (may use client tz/ip)
-    const weather = await this.weatherService.getCurrentWeather(options);
+    // Get current weather (may use client tz/ip). Pass clientCountryCode so service can fallback when IP lookup fails.
+    const weather = await this.weatherService.getCurrentWeather(options, clientCountryCode);
     console.log("Current weather:", weather);
 
     // Extract hour from currentTime (format: YYYY-MM-DDTHH:MM)

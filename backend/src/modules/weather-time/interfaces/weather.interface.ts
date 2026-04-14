@@ -16,5 +16,6 @@ export interface WeatherData {
 
 export default interface IWeatherService {
   // options: tz (timezone string), ip (client IP)
-  getCurrentWeather(options?: { tz?: string; ip?: string }): Promise<WeatherData>;
+  // second param: optional clientCountryCode to be used as a fallback when IP lookup fails
+  getCurrentWeather(options?: { tz?: string; ip?: string }, clientCountryCode?: string): Promise<WeatherData>;
 }
