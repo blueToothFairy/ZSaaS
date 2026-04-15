@@ -16,7 +16,7 @@ export default class KeepAliveController {
     // Start cron job once on controller creation
     try {
       if (!this.cronStarted) {
-        const clipUrl = process.env.CLIP_URL;
+        const clipUrl = process.env.CLIP_URL + '/ping';
 
         if (!clipUrl) {
           console.warn('KeepAlive: CLIP_URL not configured; cron ping disabled');
