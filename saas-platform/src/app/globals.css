@@ -1,5 +1,141 @@
 @import "tailwindcss";
 
+:root {
+  --glass-bg: rgba(10, 16, 28, 0.46);
+  --glass-stroke: rgba(255, 255, 255, 0.24);
+  --glass-highlight: rgba(255, 255, 255, 0.56);
+}
+
+/* Core glass primitives */
+.glass-panel {
+  position: relative;
+  background:
+    linear-gradient(
+      138deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.11) 24%,
+      rgba(255, 255, 255, 0.04) 55%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    var(--glass-bg);
+  border: 1px solid var(--glass-stroke);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.16),
+    0 22px 44px rgba(1, 4, 11, 0.5),
+    0 8px 22px rgba(80, 128, 255, 0.16);
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+}
+
+.glass-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(130px 76px at 92% 8%, rgba(255, 255, 255, 0.42), transparent 72%),
+    linear-gradient(120deg, transparent 10%, rgba(255, 255, 255, 0.42) 16%, rgba(255, 255, 255, 0.14) 22%, transparent 32%);
+  mix-blend-mode: screen;
+  opacity: 0.66;
+}
+
+.glass-chip {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06)),
+    rgba(12, 18, 32, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+.glass-neon-ring {
+  position: relative;
+  isolation: isolate;
+}
+
+.glass-neon-ring::before,
+.glass-neon-ring::after {
+  content: "";
+  position: absolute;
+  inset: auto;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glass-neon-ring::before {
+  width: min(74vw, 760px);
+  height: min(74vw, 760px);
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  background:
+    conic-gradient(
+      from -36deg,
+      rgba(255, 255, 255, 0.05) 0deg 32deg,
+      rgba(255, 255, 255, 0.98) 33deg 38deg,
+      rgba(255, 144, 170, 0.92) 39deg 66deg,
+      rgba(255, 128, 160, 0.4) 67deg 190deg,
+      rgba(255, 116, 152, 0.2) 191deg 360deg
+    );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  filter: drop-shadow(0 0 16px rgba(255, 150, 181, 0.45)) drop-shadow(0 0 56px rgba(255, 78, 130, 0.26));
+  opacity: 0.95;
+  animation: float-ring-a 10s ease-in-out infinite;
+}
+
+.glass-neon-ring::after {
+  display: none;
+  width: min(58vw, 580px);
+  height: min(58vw, 580px);
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  background:
+    conic-gradient(
+      from 148deg,
+      rgba(255, 255, 255, 0.06) 0deg 26deg,
+      rgba(255, 255, 255, 0.95) 27deg 31deg,
+      rgba(124, 184, 255, 0.95) 32deg 70deg,
+      rgba(100, 156, 255, 0.42) 71deg 220deg,
+      rgba(88, 142, 255, 0.2) 221deg 360deg
+    );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  filter: drop-shadow(0 0 16px rgba(140, 198, 255, 0.44)) drop-shadow(0 0 56px rgba(76, 132, 255, 0.24));
+  opacity: 0.9;
+  animation: float-ring-b 9s ease-in-out infinite reverse;
+}
+
+.glass-ambient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 23% 14%, rgba(255, 58, 138, 0.32), transparent 43%),
+    radial-gradient(circle at 78% 76%, rgba(82, 138, 255, 0.28), transparent 38%),
+    radial-gradient(circle at 50% 52%, rgba(255, 255, 255, 0.11), transparent 55%);
+  mix-blend-mode: screen;
+}
+
+@keyframes float-ring-a {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-10px); }
+}
+
+@keyframes float-ring-b {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(10px); }
+}
+
 /* Scrollbar Styling for Glasmorphism - HTML and Body */
 html {
   scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
@@ -30,4 +166,9 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Clerk auth: force social button labels (e.g. "Continue with Google") to stay white */
+.cl-socialButtonsBlockButtonText {
+  color: #ffffff !important;
 }

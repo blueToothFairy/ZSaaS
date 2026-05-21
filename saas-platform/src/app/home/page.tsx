@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, SetStateAction } from 'react';
+import { useState, useRef, useEffect, SetStateAction, CSSProperties } from 'react';
 import { useAuth, useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -177,6 +177,15 @@ export default function AppDashboard() {
     fetchFavorites();
   }, [getToken]);
 
+  // Keep active profile card index valid when favorites list changes
+  useEffect(() => {
+    if (favorites.length === 0) {
+      setActiveProfileIdx(0);
+      return;
+    }
+    setActiveProfileIdx((prev) => Math.min(prev, favorites.length - 1));
+  }, [favorites.length]);
+
   // Realtime Clock Update
   useEffect(() => {
     setClockTime(new Date());
@@ -335,13 +344,11 @@ export default function AppDashboard() {
   };
 
   const getGreeting = () => {
-    const sessionTexts: Record<string, string> = {
-      morning: 'Good morning',
-      afternoon: 'Good afternoon',
-      evening: 'Good evening',
-      night: 'Late night',
-    };
-    return { text: sessionTexts[session] || 'Good morning', mood: session };
+    const nowHour = clockTime?.getHours() ?? new Date().getHours();
+    if (nowHour >= 5 && nowHour < 12) return 'Good morning';
+    if (nowHour >= 12 && nowHour < 18) return 'Good afternoon';
+    if (nowHour >= 18 && nowHour < 22) return 'Good evening';
+    return 'Good night';
   };
 
   const navItems = [
@@ -371,65 +378,80 @@ export default function AppDashboard() {
     );
   }
 
+  const layoutVars: CSSProperties = {
+    backgroundImage: `url('${getWeatherAssets(weatherData).bg}')`,
+  };
+
+  const sidebarContent = (
+    <>
+      <div className="relative z-10">
+        <div className="flex items-center gap-2 mb-12">
+          <img src="/assets/brand/vibetune_logo.png" alt="VibeTune" className="w-8 h-8" />
+          <h1 className="text-2xl font-bold tracking-wide">VibeTune</h1>
+        </div>
+
+        <nav className="space-y-4">
+          {[
+            { id: 'home', label: 'Home', icon: Home },
+            { id: 'ai-scan', label: 'AI Vibe Scan', icon: ScanLine },
+            { id: 'profile', label: 'Profile', icon: User }
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveNav(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium shadow-sm transition-all duration-300 ${
+                activeNav === item.id
+                  ? 'glass-chip text-white border border-white/35 shadow-[0_12px_28px_rgba(68,114,255,0.26)]'
+                  : 'text-white/75 hover:text-white hover:bg-white/8 border border-transparent'
+              }`}
+            >
+              <item.icon size={20} /> {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      <div className="space-y-4 relative z-10 mt-auto pt-8 border-t border-white/10">
+        <div className="flex items-center gap-3 px-4 py-2">
+          <img
+            src={user?.imageUrl || 'https://i.pravatar.cc/150?u=guest'}
+            alt="Profile"
+            className="w-10 h-10 rounded-full border-2 border-white/15 object-cover"
+          />
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{user?.firstName || 'Guest'}</p>
+            <p className="text-xs text-white/60 truncate">{user?.primaryEmailAddress?.emailAddress || 'User'}</p>
+          </div>
+        </div>
+        <button onClick={() => signOut({ redirectUrl: '/landing-page' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-white/75 hover:bg-red-500/20 hover:text-red-300 transition-all border border-transparent">
+          <LogOut size={20} /> Logout
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div 
-      className="min-h-screen w-full bg-fixed bg-cover bg-center p-6 flex relative font-sans text-white"
-      style={{ backgroundImage: `url('${getWeatherAssets(weatherData).bg}')` }}
+      className="glass-neon-ring glass-ambient h-screen w-full overflow-hidden bg-fixed bg-cover bg-center relative font-sans text-white md:grid md:grid-cols-[264px_minmax(0,1fr)] md:gap-0"
+      style={layoutVars}
     >
       {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/40 pointer-events-none z-0"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(10,15,24,0.2),rgba(8,12,20,0.72)_76%),linear-gradient(120deg,rgba(4,7,14,0.68),rgba(8,12,21,0.5),rgba(4,7,14,0.68))] pointer-events-none z-0"></div>
 
-      {/* Sidebar */}
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex md:h-dvh md:sticky md:top-0 md:w-full glass-panel py-8 px-4 z-20 overflow-y-auto flex-col">
+        <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none rounded-r-2xl"></div>
+        {sidebarContent}
+      </aside>
+
+      {/* Sidebar - Mobile */}
       <motion.aside
-        animate={{ x: sidebarOpen ? 0 : -280 }}
+        animate={{ x: sidebarOpen ? 0 : -320 }}
         transition={{ duration: 0.3 }}
-        className="fixed left-0 top-0 h-screen w-64 bg-white/10 backdrop-blur-md border-r border-white/15 py-8 px-6 z-40 overflow-y-auto\"
+        className="fixed inset-y-0 left-0 h-dvh w-[264px] glass-panel py-8 px-4 z-40 overflow-y-auto flex flex-col md:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none rounded-r-2xl"></div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-12">
-            <img src="/assets/brand/vibetune_logo.png" alt="VibeTune" className="w-8 h-8" />
-            <h1 className="text-2xl font-bold tracking-wide">VibeTune</h1>
-          </div>
-
-          <nav className="space-y-4">
-            {[
-              { id: 'home', label: 'Home', icon: Home },
-              { id: 'ai-scan', label: 'AI Vibe Scan', icon: ScanLine },
-              { id: 'profile', label: 'Profile', icon: User }
-            ].map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveNav(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium shadow-sm transition-all ${
-                  activeNav === item.id
-                    ? 'bg-white/10 text-white border border-white/15'
-                    : 'text-white/70 hover:bg-white/5 border border-transparent'
-                }`}
-              >
-                <item.icon size={20} /> {item.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="space-y-4 relative z-10 mt-auto pt-8 border-t border-white/10">
-          <div className="flex items-center gap-3 px-4 py-2">
-            <img 
-              src={user?.imageUrl || 'https://i.pravatar.cc/150?u=guest'} 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full border-2 border-white/15 object-cover"
-            />
-            <div className="min-w-0">
-              <p className="font-medium text-sm truncate">{user?.firstName || 'Guest'}</p>
-              <p className="text-xs text-white/60 truncate">{user?.primaryEmailAddress?.emailAddress || 'User'}</p>
-            </div>
-          </div>
-          <button onClick={() => signOut({ redirectUrl: '/landing-page' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-white/70 hover:bg-red-500/20 hover:text-red-300 transition-all border border-transparent">
-            <LogOut size={20} /> Logout
-          </button>
-        </div>
+        {sidebarContent}
       </motion.aside>
 
       {/* Overlay for Mobile */}
@@ -441,19 +463,19 @@ export default function AppDashboard() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 ml-0 md:ml-80 flex flex-col z-10 relative">
+      <main className="w-full h-dvh min-h-0 overflow-y-auto flex flex-col z-10 relative px-4 md:px-3 lg:px-5 pt-4 md:pt-6 pb-40">
         {/* Mobile Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between md:justify-start md:gap-4 mb-8">
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 hover:bg-white/15 transition-colors\"
+            className="md:hidden p-2 rounded-full glass-chip hover:bg-white/15 transition-colors"
           >
             <Menu size={24} />
           </button>
           <h2 className="text-3xl md:text-4xl font-semibold drop-shadow-md">
-            Good morning, <span className="text-white">{user?.firstName || 'Alex'}</span>
+            {getGreeting()}, <span className="text-white">{user?.firstName || 'Alex'}</span>
           </h2>
-          <div className="w-10"></div>
+          <div className="w-10 md:hidden"></div>
         </div>
 
         {/* HOME TAB */}
@@ -463,7 +485,7 @@ export default function AppDashboard() {
             {/* Top Widgets */}
             <div className="flex flex-col md:flex-row gap-6 mb-8">
               {/* Weather Card */}
-              <div className="md:flex-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-6 relative overflow-hidden">
+              <div className="md:flex-1 glass-panel rounded-2xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
                 <p className="text-white/80 text-sm mb-4">Local Weather & Mood</p>
                 <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
@@ -472,7 +494,7 @@ export default function AppDashboard() {
                       const { icon: IconComponent, iconColor } = getWeatherAssets(weatherData);
                       return <IconComponent className={`${iconColor} w-16 h-16`} />;
                     })()}
-                    <span className="text-5xl font-light">{weatherData?.temperature || 22}°</span>
+                    <span className="text-5xl font-light">{weatherData?.temperature || 22}&deg;</span>
                   </div>
                   <div>
                     <p className="text-xl font-semibold">{session?.charAt(0).toUpperCase() + session?.slice(1)} Vibe</p>
@@ -482,7 +504,7 @@ export default function AppDashboard() {
               </div>
 
               {/* Time Card */}
-              <div className="md:flex-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-6 relative overflow-hidden">
+              <div className="md:flex-1 glass-panel rounded-2xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
                 <p className="text-white/80 text-sm mb-4">Local Time</p>
                 <div className="flex flex-col relative z-10">
@@ -499,7 +521,7 @@ export default function AppDashboard() {
             {/* Curated Tracks Grid */}
             <div className="flex-1 flex flex-col">
               <h3 className="text-xl font-medium mb-4 drop-shadow-md">Curated for you</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 flex-1 overflow-y-auto pb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 pb-4">
                 {(curatedSongs.length > 0 ? curatedSongs.slice(0, 40) : Array(40).fill(null).map((_, i) => ({
                   id: String(i),
                   title: 'Loading...',
@@ -509,11 +531,11 @@ export default function AppDashboard() {
                 })) as Song[]).map((track) => (
                   <div 
                     key={track.id}
-                    className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-2 hover:bg-white/15 transition-all group flex flex-col h-full relative"
+                    className="glass-panel rounded-2xl p-2 hover:bg-white/15 transition-all group flex flex-col h-full relative"
                   >
                     <button 
                       onClick={(e) => handleToggleFavorite(track, e)} 
-                      className="absolute top-2 right-2 p-1 hover:bg-white/10 transition-colors z-10"
+                      className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/10 transition-colors z-10"
                     >
                       <Heart className={`w-4 h-4 ${favoritedSongIds.has(track.id) ? 'fill-rose-500 text-rose-500' : 'text-white/40 hover:text-rose-500'} transition-colors`} />
                     </button>
@@ -546,24 +568,41 @@ export default function AppDashboard() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex-1 flex flex-col pb-40">
             <h2 className="text-4xl font-semibold mb-8 drop-shadow-md">AI Vibe Scan</h2>
             
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-8 flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden relative\">
+            <div className="glass-panel rounded-2xl p-8 flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden relative">
               
               {/* Upload Area */}
               <motion.button
                 onClick={() => fileInputRef.current?.click()}
-                className={`relative flex flex-col items-center justify-center bg-white/8 border-2 border-white/20 rounded-2xl hover:bg-white/10 transition-all flex-shrink-0 ${uploadedImage ? 'w-full lg:w-[40%] h-96' : 'w-full lg:w-full h-96'}`}
+                className={`relative flex flex-col items-center justify-center bg-white/8 border-2 border-white/20 rounded-2xl hover:bg-white/10 transition-all flex-shrink-0 overflow-hidden ${uploadedImage ? 'w-full lg:w-[40%] h-96' : 'w-full lg:w-full h-96'}`}
               >
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform mb-4">
-                  <Camera className="w-7 h-7 text-white/70" />
-                </div>
-                <span className="text-lg font-bold">{uploadedImage ? 'Change' : 'Upload'} Photo</span>
-                <span className="text-sm font-medium text-white/60 mt-2">Drag & Drop or Click</span>
+                {uploadedImage ? (
+                  <>
+                    <ImageWithFallback
+                      src={uploadedImage}
+                      alt="Uploaded vibe"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/35" />
+                    <div className="relative z-10 text-center px-4">
+                      <span className="text-lg font-bold block">Your uploaded photo</span>
+                      <span className="text-sm font-medium text-white/80 mt-2 block">Click to change</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform mb-4">
+                      <Camera className="w-7 h-7 text-white/70" />
+                    </div>
+                    <span className="text-lg font-bold">Upload Photo</span>
+                    <span className="text-sm font-medium text-white/60 mt-2">Drag & Drop or Click</span>
+                  </>
+                )}
               </motion.button>
 
               <AnimatePresence mode="wait">
                 {uploadedImage && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 h-96 flex flex-col bg-white/8 border border-white/15 rounded-2xl overflow-hidden\">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 h-96 flex flex-col bg-white/8 border border-white/15 rounded-2xl overflow-hidden">
                     
                     {isAnalyzing ? (
                       <div className="flex-1 flex flex-col items-center justify-center">
@@ -573,9 +612,9 @@ export default function AppDashboard() {
                       </div>
                     ) : scanResults && scanResults.length > 0 ? (
                       <>
-                        <div className="p-4 border-b border-white/15 bg-white/5 flex justify-between items-center flex-shrink-0\">
+                        <div className="p-4 border-b border-white/15 bg-white/5 flex justify-between items-center flex-shrink-0">
                           <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
-                            Matched · {scanResults.length} tracks
+                            Matched - {scanResults.length} tracks
                           </span>
                           <button onClick={() => setUploadedImage(null)} className="text-xs font-bold text-white/60 hover:text-white">Reset</button>
                         </div>
@@ -621,10 +660,10 @@ export default function AppDashboard() {
             <h2 className="text-4xl font-semibold mb-8 drop-shadow-md">Your Profile</h2>
 
             {/* Profile Card */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-8 mb-8\">
+            <div className="glass-panel rounded-2xl p-8 mb-8">
               <div className="flex flex-col md:flex-row items-center gap-8">
                 <div className="relative flex-shrink-0">
-                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-white/10 border-2 border-white/20\">
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-white/10 border-2 border-white/20">
                     <img src={user?.imageUrl || 'https://i.pravatar.cc/150?u=guest'} alt="Avatar" className="w-full h-full rounded-full object-cover" />
                   </div>
                 </div>
@@ -645,7 +684,7 @@ export default function AppDashboard() {
             </div>
 
             {/* Soundtrack Slideshow */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-8 flex-1 flex flex-col\">
+            <div className="glass-panel rounded-2xl p-8 flex-1 flex flex-col">
               <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
                 <Heart className="w-7 h-7 text-rose-500 fill-rose-500" /> 
                 Favorite Tracks
@@ -667,42 +706,47 @@ export default function AppDashboard() {
                       const offset = i - activeProfileIdx;
                       const isActive = offset === 0;
                       const absOffset = Math.abs(offset);
+                      const xOffset = offset * 260;
 
                       return (
-                        <motion.div
+                        <div
                           key={song.id}
-                          onClick={() => {
-                            if (isActive) playTrack(song, favorites);
-                            else setActiveProfileIdx(i);
-                          }}
-                          animate={{
-                            x: offset * 180,
-                            scale: isActive ? 1 : Math.max(0.7 - absOffset * 0.1, 0.4),
-                            opacity: absOffset > 2 ? 0 : isActive ? 1 : Math.max(0.5 - absOffset * 0.2, 0),
-                            zIndex: 10 - absOffset
-                          }}
-                          transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
-                          className={`absolute w-56 bg-white/10 border border-white/15 rounded-2xl shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] p-4 flex flex-col items-center group ${absOffset > 2 ? 'pointer-events-none' : 'cursor-pointer hover:bg-white/15'}`}
+                          style={{ zIndex: 30 - absOffset }}
+                          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${absOffset > 2 ? 'pointer-events-none' : ''}`}
                         >
-                          <div className="w-full aspect-square rounded-xl overflow-hidden mb-4 relative border border-white/15\">
-                            <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                            {isActive && (
-                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center text-black">
-                                  {currentTrack?.id === song.id && isAudioPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" fill="currentColor" />}
+                          <motion.div
+                            onClick={() => {
+                              if (isActive) playTrack(song, favorites);
+                              else setActiveProfileIdx(i);
+                            }}
+                            animate={{
+                              x: xOffset,
+                              scale: isActive ? 1.08 : absOffset === 1 ? 0.82 : 0.66,
+                              opacity: absOffset > 2 ? 0 : isActive ? 1 : absOffset === 1 ? 0.72 : 0.42
+                            }}
+                            transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
+                            className="w-56 glass-panel rounded-2xl p-4 flex flex-col items-center group cursor-pointer hover:bg-white/15 transform-gpu"
+                          >
+                            <div className="w-full aspect-square rounded-xl overflow-hidden mb-4 relative border border-white/15">
+                              <ImageWithFallback src={song.artwork} alt={song.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              {isActive && (
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center text-black">
+                                    {currentTrack?.id === song.id && isAudioPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" fill="currentColor" />}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
+                            </div>
+                            <h4 className="text-base font-bold truncate w-full text-center">{song.title}</h4>
+                            <p className="text-xs text-white/60 truncate w-full text-center mt-1">{song.artist}</p>
+
+                            {isActive && (
+                              <button onClick={(e) => handleToggleFavorite(song, e)} className="mt-4 w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/15 transition-colors">
+                                <Heart className={`w-5 h-5 ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500' : 'text-white/70'}`} />
+                              </button>
                             )}
-                          </div>
-                          <h4 className="text-base font-bold truncate w-full text-center">{song.title}</h4>
-                          <p className="text-xs text-white/60 truncate w-full text-center mt-1">{song.artist}</p>
-                          
-                          {isActive && (
-                            <button onClick={(e) => handleToggleFavorite(song, e)} className="mt-4 w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/15 transition-colors">
-                              <Heart className={`w-5 h-5 ${favoritedSongIds.has(song.id) ? 'fill-rose-500 text-rose-500' : 'text-white/70'}`} />
-                            </button>
-                          )}
-                        </motion.div>
+                          </motion.div>
+                        </div>
                       );
                     })}
                   </div>
@@ -715,8 +759,8 @@ export default function AppDashboard() {
       </main>
 
       {/* Bottom Player */}
-      <div className="fixed bottom-6 left-6 right-6 md:left-80 md:right-6 z-50 pointer-events-none flex justify-center">
-        <div className="pointer-events-auto w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_0_rgba(255,255,255,0.06)] rounded-full px-6 py-3 flex items-center justify-between gap-6\">
+      <div className="fixed bottom-6 left-6 right-6 md:left-[268px] md:right-8 z-50 pointer-events-none flex justify-center">
+        <div className="pointer-events-auto w-full max-w-4xl glass-panel rounded-full px-6 py-3 flex items-center justify-between gap-6">
           
           {/* Track Info */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
