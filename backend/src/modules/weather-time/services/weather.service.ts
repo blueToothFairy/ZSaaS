@@ -2,11 +2,66 @@
 import axios from 'axios';
 import IWeatherService, { WeatherData } from '../interfaces/weather.interface.js';
 
+type WeatherProvider = 'weatherapi' | 'open-meteo';
+
+const WEATHER_API_TO_WMO_CODE: Record<number, number> = {
+  1000: 0,
+  1003: 2,
+  1006: 2,
+  1009: 3,
+  1030: 45,
+  1063: 80,
+  1066: 71,
+  1069: 85,
+  1072: 56,
+  1087: 95,
+  1114: 75,
+  1117: 75,
+  1135: 45,
+  1147: 48,
+  1150: 51,
+  1153: 51,
+  1168: 56,
+  1171: 57,
+  1180: 61,
+  1183: 61,
+  1186: 63,
+  1189: 63,
+  1192: 65,
+  1195: 65,
+  1198: 66,
+  1201: 67,
+  1204: 77,
+  1207: 77,
+  1210: 71,
+  1213: 71,
+  1216: 73,
+  1219: 73,
+  1222: 75,
+  1225: 75,
+  1237: 77,
+  1240: 80,
+  1243: 81,
+  1246: 82,
+  1249: 85,
+  1252: 86,
+  1255: 85,
+  1258: 86,
+  1261: 77,
+  1264: 77,
+  1273: 95,
+  1276: 96,
+  1279: 95,
+  1282: 99,
+};
+
 export default class WeatherService implements IWeatherService {
   // use ipinfo.io for IP geolocation
   private readonly geoLocationUrl = 'https://ipinfo.io';
   private readonly restCountriesUrl = 'https://restcountries.com/v3.1/alpha';
-  private readonly weatherUrl = 'https://api.open-meteo.com/v1/forecast';
+  private readonly openMeteoUrl = process.env.OPEN_METEO_URL || 'https://api.open-meteo.com/v1/forecast';
+  private readonly weatherApiCurrentUrl = process.env.WEATHERAPI_CURRENT_URL || 'https://api.weatherapi.com/v1/current.json';
+  private readonly weatherProvider = this.resolveWeatherProvider();
 
   // Accept optional options: tz (client timezone) and ip (client IP).
   // clientCountryCode is used as a fallback when IP lookup fails.
@@ -140,8 +195,38 @@ export default class WeatherService implements IWeatherService {
     countryCode: string,
     tz?: string
   ) {
+    if (this.weatherProvider === 'open-meteo') {
+      return this.getWeatherFromOpenMeteo(latitude, longitude, tz);
+    }
+
     try {
-      const response = await axios.get(this.weatherUrl, {
+      return await this.getWeatherFromWeatherApi(latitude, longitude);
+    } catch (error) {
+      console.warn(
+        'WeatherAPI request failed, falling back to Open-Meteo:',
+        axios.isAxiosError(error) ? error.message : error
+      );
+      return this.getWeatherFromOpenMeteo(latitude, longitude, tz);
+    }
+  }
+
+  private resolveWeatherProvider(): WeatherProvider {
+    const configuredProvider = process.env.WEATHER_PROVIDER?.trim().toLowerCase();
+
+    if (configuredProvider === 'weatherapi' || configuredProvider === 'open-meteo') {
+      return configuredProvider;
+    }
+
+    if (configuredProvider) {
+      console.warn(`Unknown WEATHER_PROVIDER "${configuredProvider}". Falling back to "weatherapi".`);
+    }
+
+    return 'weatherapi';
+  }
+
+  private async getWeatherFromOpenMeteo(latitude: number, longitude: number, tz?: string) {
+    try {
+      const response = await axios.get(this.openMeteoUrl, {
         params: {
           latitude,
           longitude,
@@ -166,9 +251,69 @@ export default class WeatherService implements IWeatherService {
         currentTime,
       };
     } catch (error) {
-      console.log('Error getting weather data:', error);
+      console.log('Error getting weather data from Open-Meteo:', error);
       throw new Error('Failed to fetch weather data from Open-Meteo');
     }
+  }
+
+  private async getWeatherFromWeatherApi(latitude: number, longitude: number) {
+    const apiKey = process.env.WEATHERAPI_KEY?.trim();
+    if (!apiKey) {
+      throw new Error('WEATHERAPI_KEY is not configured');
+    }
+
+    const response = await axios.get(this.weatherApiCurrentUrl, {
+      params: {
+        key: apiKey,
+        q: `${latitude},${longitude}`,
+        aqi: 'no',
+      },
+      timeout: 10000,
+    });
+
+    const current = response.data.current;
+    const location = response.data.location;
+    const weatherApiCode = Number(current?.condition?.code);
+    const mappedWmoCode = this.mapWeatherApiConditionToWmo(weatherApiCode, current?.condition?.text);
+
+    return {
+      temperature: Math.round(current.temp_c),
+      weatherCode: mappedWmoCode,
+      humidity: current.humidity,
+      windSpeed: current.wind_kph,
+      condition: current.condition?.text || this.getWeatherCondition(mappedWmoCode),
+      timezone: location?.tz_id || 'auto',
+      currentTime: this.normalizeLocaltime(location?.localtime),
+    };
+  }
+
+  private normalizeLocaltime(localtime?: string): string {
+    if (!localtime || typeof localtime !== 'string') {
+      return new Date().toISOString().slice(0, 16);
+    }
+
+    // WeatherAPI localtime format: YYYY-MM-DD HH:mm
+    return localtime.replace(' ', 'T');
+  }
+
+  private mapWeatherApiConditionToWmo(code: number, conditionText?: string): number {
+    const mappedCode = WEATHER_API_TO_WMO_CODE[code];
+    if (mappedCode !== undefined) {
+      return mappedCode;
+    }
+
+    const normalizedCondition = (conditionText || '').toLowerCase();
+    if (normalizedCondition.includes('thunder')) return 95;
+    if (normalizedCondition.includes('snow')) return 73;
+    if (normalizedCondition.includes('sleet')) return 77;
+    if (normalizedCondition.includes('drizzle')) return 53;
+    if (normalizedCondition.includes('rain')) return 63;
+    if (normalizedCondition.includes('fog') || normalizedCondition.includes('mist')) return 45;
+    if (normalizedCondition.includes('overcast')) return 3;
+    if (normalizedCondition.includes('cloud')) return 2;
+    if (normalizedCondition.includes('clear') || normalizedCondition.includes('sunny')) return 0;
+
+    return 0;
   }
 
   private getWeatherCondition(weatherCode: number): string {
