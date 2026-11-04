@@ -13,7 +13,13 @@
 /.next/
 /out/
 
-# Production build artifacts (nếu bạn tùy chỉnh output dir)
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Production build artifacts
 /build
 
 # Debug logs and error logs
@@ -23,25 +29,21 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Environment variables (QUAN TRỌNG: Không bao giờ commit secret keys)
+# Environment variables
 .env*.local
 .env.production
 .env.development
 .env.test
 .env
 
-# Lưu ý: Thông thường .env chứa các biến public mặc định có thể commit, 
-# nhưng nếu bạn để secret trong .env thì hãy uncomment dòng dưới đây:
-# .env
-
-# Vercel (nếu deploy lên Vercel)
+# Vercel
 .vercel
 
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# Editor / IDE settings (Tùy chọn, nên ignore để tránh conflict settings cá nhân)
+# Editor / IDE settings
 .ds_store
 *.pem
 .idea/
