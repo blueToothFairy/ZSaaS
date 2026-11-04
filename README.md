@@ -2,7 +2,7 @@
 
 <div align="center">
 
-🎵 **AI-Powered Music Discovery Matching Your Mood, Weather & Vibe**
+🎵 **AI Soundtrack Finder for Content Creators**
 
 [![Node.js Version](https://img.shields.io/badge/Node.js-≥18.0.0-green?logo=node.js)](https://nodejs.org/)
 [![Python Version](https://img.shields.io/badge/Python-≥3.9-blue?logo=python)](https://www.python.org/)
@@ -36,26 +36,26 @@
 
 ## Overview
 
-**VibeTune** is a modern SaaS music discovery platform that leverages artificial intelligence to generate personalized playlists based on your environment, mood, and visual aesthetics. 
+**VibeTune** is an AI Soundtrack Finder that helps content creators choose the right music for a specific piece of content — a photo, video, or creative project — so the soundtrack fits both the content itself and the feeling the creator wants to communicate.
 
 ### The Problem
 
-Music discovery is fragmented. Existing platforms rely on popularity metrics, historical listening patterns, or generic genre classifications. They miss the context of *now*—your current mood, the weather outside, the aesthetic of a photo you just took.
+Finding a soundtrack that truly fits a piece of content is hard. Existing music platforms are built for personal listening, not for content creation. They surface popular songs or tracks based on listening history, but they don't answer the question creators actually face: *which soundtrack will make this content feel the way I want?* Mood and weather alone aren't enough — the same image can call for completely different music depending on the creator's goal.
 
 ### The Solution
 
-VibeTune combines three intelligence layers:
+VibeTune leads with the creator's intent and combines it with visual understanding to recommend a focused list of suitable tracks, each with a clear reason why it fits.
 
-1. **AI Vision Intelligence** – Upload an image and our CLIP-powered AI extracts color palettes, mood, and energy to suggest perfectly matched tracks
-2. **Environmental Awareness** – Real-time weather integration shapes your playlist from rainy lo-fi to sunny indie vibes
-3. **Taste Learning** – The more you interact, the sharper the recommendations become
+1. **Content understanding** – Upload an image or other content reference and our CLIP-powered AI analyzes the visual content to extract mood, color palette, and energy.
+2. **Musical intent** – You choose the intended mood, music style, energy, and vocal preference. Your choices are never overridden by AI assumptions.
+3. **Music search** – VibeTune searches the iTunes catalog and returns a short list of suitable tracks with explanations, not an automatically generated playlist.
+4. **Optional context** – Mood and weather can be added as supporting context, but they are not the product's main purpose.
 
 ### Target Users
 
-- **Music enthusiasts** who want discovery beyond algorithmic feeds
-- **Creatives** (photographers, designers, content creators) seeking aesthetic-driven soundtracks
-- **Mood-driven listeners** who want music that matches their current environment
-- **SaaS developers** exploring AI/ML integration patterns
+- **Independent content creators**, especially people creating travel and lifestyle content for short-form platforms
+- **Photographers and designers** looking for aesthetic-driven soundtracks
+- **Anyone** who needs music that fits a specific photo, video, or creative project
 
 ### Demo Screenshot / GIF
 
@@ -69,43 +69,33 @@ VibeTune combines three intelligence layers:
 
 ## Features
 
-### 🎨 Core Features
+### 🎯 Core Workflow
 
-- **AI-Powered Image Analysis**
-  - Upload any image (JPG, PNG, WebP)
-  - CLIP vision models extract mood, color palette, and energy
-  - Automatic matching to iTunes database for instant playlists
-  - Support for images up to 10MB
+VibeTune follows a focused flow to help creators find a soundtrack for their content:
 
-- **Weather-Based Recommendations**
-  - Real-time weather data integration
-  - Dynamic playlist curation: rainy day → lo-fi, sunny → upbeat
-  - Location-aware features
-  - Time-of-day context awareness
+1. **Add content** – Create a project and add an image or other content reference.
+2. **Set musical intent** – Choose the intended mood, music style, energy, and vocal preference.
+3. **Analyze** – VibeTune analyzes the visual content and combines it with your intent.
+4. **Recommend** – Receive a short list of suitable tracks, each with a clear reason why it fits.
+5. **Refine and save** – Adjust mood, energy, genre, or vocals without starting over, then save your chosen track to the project.
 
-- **Music Search & Integration**
-  - Direct iTunes API integration
-  - High-precision track metadata fetching
-  - Multi-artist and multi-track results
-  - Album artwork and preview links
+### Core Capabilities
 
-- **User Authentication & Personalization**
-  - Secure authentication via Clerk
-  - User history tracking and playback analytics
-  - Personalized recommendation feeds
-  - Saved playlists and favorites
+- **AI image analysis** – CLIP vision models extract mood, color palette, and energy from an uploaded image to understand your content.
+- **Music search** – Direct iTunes API integration for precise track metadata, album artwork, and preview links.
+- **Intent-driven recommendations** – A focused list of suitable tracks with clear explanations, tailored to both the content and your musical intent. Mood and weather are optional context, not the product's main purpose.
+- **Refinement** – Adjust mood, energy, genre, or vocal preference and re-run recommendations without starting over.
+- **Save to project** – Select a track and save it to your project for later use.
+- **User authentication** – Secure authentication via Clerk with saved projects and favorites.
 
-- **Smart Curation**
-  - Machine learning-based taste refinement
-  - Blends user history with contextual data
-  - Adaptive weighting: mood > history > popularity
-  - Genre + mood hybrid recommendations
+### Planned (not yet implemented)
 
-- **Responsive UI**
-  - Mobile-first design with Tailwind CSS
-  - React-based interactive components
-  - Micro-animations and motion design
-  - Accessibility-focused (WCAG 2.1)
+The following capabilities are part of the product roadmap and are not yet part of the current implementation:
+
+- **Video analysis** – Analyzing video content (beyond single images) for soundtrack matching.
+- **Beat matching** – Synchronizing music beats with video cuts or transitions.
+- **Advanced personalization** – Machine learning-based taste refinement that adapts to your history over time.
+- **Licensed music catalog** – A fully licensed catalog of tracks for commercial use in content.
 ---
 
 ## Tech Stack
@@ -527,44 +517,41 @@ docker run -p 8000:8000 vibetune-ai
 
 ### User Workflows
 
-#### Workflow 1: AI Vibe-Based Playlist Generation
+#### Workflow 1: Find a Soundtrack for Your Content
 
-1. **Sign in** to VibeTune using Clerk authentication
-2. **Navigate** to "AI Vibe" or "Scan" section
-3. **Upload an image** (JPG, PNG, or WebP, max 10MB)
-4. **Wait** for AI analysis (typically 1-3 seconds)
-5. **Receive playlist** with 20-30 matched songs from iTunes
-6. **Play directly** or share on social media
+1. **Create a project** and add an image or other content reference (JPG, PNG, or WebP, max 10MB).
+2. **Set musical intent** – choose the intended mood, music style, energy, and vocal preference.
+3. **Analyze** – VibeTune analyzes the visual content and combines it with your intent.
+4. **Get recommendations** – receive a short list of suitable tracks, each with a clear reason why it fits.
+5. **Refine and save** – adjust mood, energy, genre, or vocals without starting over, then save your chosen track to the project.
 
 **Screenshots / Steps:**
 ```
-Sign In Page 
+Create Project (add image)
     ↓
-Home Page (feat. hero, features, CTA)
+Set Musical Intent (mood, style, energy, vocals)
     ↓
-AI Upload Page (drag & drop or click)
+Analysis (visual understanding + your intent)
     ↓
-Loading State (spinner + progress text)
+Recommendations (short track list with reasons)
     ↓
-Playlist Results (song cards with artwork, artist, album)
+Refine & Save (adjust and pick a track)
 ```
 
-#### Workflow 2: Weather-Driven Recommendations
+#### Workflow 2: Add Weather or Mood as Optional Context
 
-1. **Access Dashboard**
-2. **Enable location** permissions
-3. **View "Today's Vibe"** widget showing current weather
-4. **Auto-generated playlist** based on weather conditions:
-   - ☔ **Rainy** → Lo-fi, chillhop, indie folk
-   - ☀️ **Sunny** → Upbeat, indie pop, electronic
-   - 🌙 **Night** → Ambient, R&B, downtempo
-5. **Refresh** periodically as weather changes
+1. **Open your project** and start a soundtrack search.
+2. **Add optional context** such as current weather or time of day if it helps shape the feeling you want.
+3. **Get recommendations** that combine your content, intent, and optional context.
+4. **Refine and save** the track that best fits your content.
+
+Weather and mood are supporting context — they refine results but are not the product's main purpose.
 
 #### Workflow 3: Discover Based on Music Search
 
 1. **Search for artist/song** via iTunes integration
 2. **Get results** with album artwork and preview
-3. **Click "Find Similar Vibes"** to expand playlist
+3. **Click "Find Similar Vibes"** to expand recommendations
 4. **Save to favorites** and add to collections
 
 ### Code Examples
