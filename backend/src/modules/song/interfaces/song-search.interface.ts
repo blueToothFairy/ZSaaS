@@ -16,7 +16,14 @@ export interface SearchResult {
   totalResults: number;
 }
 
+export interface SearchResultWithCandidates {
+  result: SearchResult;
+  candidates: Song[];
+}
+
 export default interface ISongSearch {
   searchSongs(query: string, limit?: number, country?: string): Promise<SearchResult>;
   searchByKeywords(keywords: string[], limit?: number, country?: string): Promise<SearchResult>;
+  searchByKeywordsWithCandidates?(keywords: string[], limit?: number, country?: string, deterministic?: boolean): Promise<SearchResultWithCandidates>;
+  searchCandidates(queries: RecommendationQuery[], country?: string, concurrency?: number): Promise<RetrievedCandidate[]>;
 }

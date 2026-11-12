@@ -15,7 +15,12 @@ import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { compressImage } from '@/lib/utils/image-compressor';
 
 // Interfaces
-interface Song { id: string; title: string; artist: string; album: string; artwork: string; previewUrl?: string; duration?: number; externalUrl?: string; }
+interface Song { id: string; title: string; artist: string; album: string; artwork: string; previewUrl?: string; duration?: number; externalUrl?: string; artistId?: string; primaryGenreName?: string; score?: number; reasons?: string[]; }
+type TasteType = 'genre' | 'artist' | 'track';
+type TasteSentiment = 'preferred' | 'disliked';
+interface TastePreference { id?: string; type: TasteType; sentiment: TasteSentiment; value: string; displayName: string; provider?: string; externalId?: string; metadata?: Record<string, unknown>; hardExclude?: boolean; }
+interface MusicGenreOption { id: string; displayName: string; aliases: string[]; }
+interface MusicTasteResponse { success: boolean; data: { preferences: TastePreference[]; availableGenres: MusicGenreOption[]; preferredLanguages: string[]; vocalPreference: 'instrumental' | 'vocals' | 'any'; qualifiesForRecommendations: boolean; }; }
 interface WeatherData { temperature: number; weatherCode: number; humidity: number; windSpeed: number; condition: string; }
 interface Favorite { song_id: string; title: string; artist: string; album: string; artwork: string; preview_url?: string; external_url?: string; }
 interface FavoritesResponse { success: boolean; data: { favorites: Favorite[]; total: number; } }
@@ -110,6 +115,21 @@ export default function AppDashboard() {
   const [favorites, setFavorites] = useState<Song[]>([]);
   const [isFavoritesLoading, setIsFavoritesLoading] = useState(true);
   const [favoritedSongIds, setFavoritedSongIds] = useState<Set<string>>(new Set());
+  const [musicPreferences, setMusicPreferences] = useState<TastePreference[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<MusicGenreOption[]>([]);
+  const [preferredLanguages, setPreferredLanguages] = useState('');
+  const [vocalPreference, setVocalPreference] = useState<'instrumental' | 'vocals' | 'any'>('any');
+  const [isTasteLoading, setIsTasteLoading] = useState(true);
+  const [isTasteSaving, setIsTasteSaving] = useState(false);
+  const [tasteMessage, setTasteMessage] = useState('');
+  const [genreInput, setGenreInput] = useState('');
+  const [artistQuery, setArtistQuery] = useState('');
+  const [artistSearchResults, setArtistSearchResults] = useState<Song[]>([]);
+  const [trackQuery, setTrackQuery] = useState('');
+  const [trackSearchResults, setTrackSearchResults] = useState<Song[]>([]);
+  const [needsTasteSetup, setNeedsTasteSetup] = useState(false);
+  const [contentPlatform, setContentPlatform] = useState('instagram');
+  const [contentType, setContentType] = useState('story');
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +196,27 @@ export default function AppDashboard() {
     
     fetchFavorites();
   }, [getToken]);
+
+  useEffect(() => {
+    if (activeNav !== 'profile') return;
+    const loadMusicTaste = async () => {
+      setIsTasteLoading(true);
+      try {
+        const token = await getToken();
+        const response = await axios.get<MusicTasteResponse>('/api/profile/music-taste', { headers: { Authorization: `Bearer ${token}` } });
+        setMusicPreferences(response.data.data.preferences);
+        setAvailableGenres(response.data.data.availableGenres ?? []);
+        setPreferredLanguages(response.data.data.preferredLanguages.join(', '));
+        setVocalPreference(response.data.data.vocalPreference);
+      } catch (error) {
+        console.error('Failed to load music taste profile', error);
+        setTasteMessage('Could not load your music taste. Please try again.');
+      } finally {
+        setIsTasteLoading(false);
+      }
+    };
+    loadMusicTaste();
+  }, [activeNav, getToken]);
 
   // Keep active profile card index valid when favorites list changes
   useEffect(() => {
@@ -696,6 +737,62 @@ export default function AppDashboard() {
                   <button className="rounded-xl bg-sky-200 px-4 py-3 text-sm font-semibold text-slate-950">Add password</button>
                 </form>
               </div>
+
+              {needsTasteSetup && <p className="mb-4 rounded-xl border border-amber-300/30 bg-amber-300/10 p-3 text-sm text-amber-100">Personalized recommendations need at least two preferred genres or three favorite tracks.</p>}
+              {tasteMessage && <p role="status" className="mb-4 rounded-xl bg-white/10 p-3 text-sm text-white/80">{tasteMessage}</p>}
+              {isTasteLoading ? <p className="py-4 text-white/60">Loading music taste…</p> : <div className="space-y-6">
+                <div>
+                  <label htmlFor="taste-genre" className="block text-sm font-semibold mb-2">Preferred or disliked genres</label>
+                  <div className="flex flex-wrap gap-2">
+                    <input id="taste-genre" list="music-genre-suggestions" value={genreInput} onChange={(event) => setGenreInput(event.target.value)} placeholder="e.g. Indie, Jazz" className="min-w-48 flex-1 rounded-lg border border-white/20 bg-black/20 px-3 py-2 text-sm" />
+                    <datalist id="music-genre-suggestions">{availableGenres.flatMap((genre) => [genre.displayName, ...genre.aliases]).map((genre) => <option key={genre} value={genre} />)}</datalist>
+                    <button onClick={() => { if (genreInput.trim()) addTastePreference({ type: 'genre', sentiment: 'preferred', value: genreInput.trim(), displayName: genreInput.trim() }); setGenreInput(''); }} className="rounded-lg bg-white/15 px-3 py-2 text-sm">Add preferred</button>
+                    <button onClick={() => { if (genreInput.trim()) addTastePreference({ type: 'genre', sentiment: 'disliked', value: genreInput.trim(), displayName: genreInput.trim() }); setGenreInput(''); }} className="rounded-lg bg-white/10 px-3 py-2 text-sm">Add disliked</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="taste-artist-search" className="block text-sm font-semibold mb-2">Favorite artists</label>
+                  <div className="flex gap-2">
+                    <input id="taste-artist-search" value={artistQuery} onChange={(event) => setArtistQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchTasteCatalog(artistQuery, 'artist'); }} placeholder="Search an artist" className="min-w-48 flex-1 rounded-lg border border-white/20 bg-black/20 px-3 py-2 text-sm" />
+                    <button onClick={() => void searchTasteCatalog(artistQuery, 'artist')} className="rounded-lg bg-white/15 px-4 py-2 text-sm">Search</button>
+                    <button onClick={() => { if (artistQuery.trim()) addTastePreference({ type: 'artist', sentiment: 'disliked', value: artistQuery.trim(), displayName: artistQuery.trim() }); }} className="rounded-lg bg-white/10 px-3 py-2 text-sm">Dislike name</button>
+                  </div>
+                  {artistSearchResults.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{Array.from(new Map(artistSearchResults.map((song) => [song.artistId || song.artist, song])).values()).map((song) => <button key={song.artistId || song.artist} onClick={() => addTastePreference({ type: 'artist', sentiment: 'preferred', value: song.artistId || song.artist, displayName: song.artist, provider: 'itunes', ...(song.artistId ? { externalId: song.artistId } : {}), metadata: { artistId: song.artistId } })} className="rounded-full bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20">+ {song.artist}</button>)}</div>}
+                </div>
+
+                <div>
+                  <label htmlFor="taste-track-search" className="block text-sm font-semibold mb-2">Favorite tracks</label>
+                  <div className="flex gap-2">
+                    <input id="taste-track-search" value={trackQuery} onChange={(event) => setTrackQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchTasteCatalog(trackQuery, 'track'); }} placeholder="Search a song you enjoy" className="min-w-48 flex-1 rounded-lg border border-white/20 bg-black/20 px-3 py-2 text-sm" />
+                    <button onClick={() => void searchTasteCatalog(trackQuery, 'track')} className="rounded-lg bg-white/15 px-4 py-2 text-sm">Search</button>
+                  </div>
+                  {trackSearchResults.length > 0 && <div className="mt-2 space-y-2">{trackSearchResults.map((song) => <button key={song.id} onClick={() => addTastePreference({ type: 'track', sentiment: 'preferred', value: song.id, displayName: song.title, provider: 'itunes', externalId: song.id, metadata: { artistName: song.artist, artistId: song.artistId, primaryGenreName: song.primaryGenreName } })} className="flex w-full items-center gap-3 rounded-lg bg-white/10 p-2 text-left hover:bg-white/20"><img src={song.artwork} alt="" className="h-10 w-10 rounded object-cover" /><span className="text-sm">{song.title}<span className="block text-xs text-white/60">{song.artist}</span></span><span className="ml-auto">+</span></button>)}</div>}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="taste-languages" className="block text-sm font-semibold mb-2">Preferred languages</label>
+                    <input id="taste-languages" value={preferredLanguages} onChange={(event) => setPreferredLanguages(event.target.value)} placeholder="English, Korean" className="w-full rounded-lg border border-white/20 bg-black/20 px-3 py-2 text-sm" />
+                    <p className="mt-1 text-xs text-white/50">Used to shape catalog searches; unknown track languages remain neutral.</p>
+                  </div>
+                  <div>
+                    <label htmlFor="taste-vocals" className="block text-sm font-semibold mb-2">Vocal preference</label>
+                    <select id="taste-vocals" value={vocalPreference} onChange={(event) => setVocalPreference(event.target.value as typeof vocalPreference)} className="w-full rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm">
+                      <option value="any">Any</option><option value="vocals">Vocals</option><option value="instrumental">Instrumental</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Selected preferences</h4>
+                  {musicPreferences.length === 0 ? <p className="text-sm text-white/50">No music preferences selected yet.</p> : <div className="flex flex-wrap gap-2">{musicPreferences.map((preference, index) => <span key={`${preference.type}:${preference.value}:${preference.sentiment}`} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs">
+                    <span>{preference.sentiment === 'disliked' ? 'Avoid' : 'Like'} {preference.displayName} <span className="text-white/50">({preference.type})</span></span>
+                    {preference.sentiment === 'disliked' && preference.type !== 'track' && <label className="flex items-center gap-1 text-white/60"><input type="checkbox" checked={preference.hardExclude === true} onChange={(event) => setMusicPreferences((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, hardExclude: event.target.checked } : item))} /> exclude</label>}
+                    <button aria-label={`Remove ${preference.displayName}`} onClick={() => setMusicPreferences((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="text-white/60 hover:text-white">×</button>
+                  </span>)}</div>}
+                </div>
+              </div>}
             </div>
 
             {/* Soundtrack Slideshow */}

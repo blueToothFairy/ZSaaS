@@ -17,10 +17,10 @@ The system must:
 - Allow authenticated users to configure, edit, and remove their explicit music preferences.
 - Reuse the existing CLIP, iTunes search, profile, authentication, database, and caching implementations.
 - Retrieve candidates using context-based, taste-based, and hybrid search queries.
-- Rank candidates using traceable taste, context, intent, and metadata signals.
+- Rank candidates using context, taste, and metadata signals with weights `0.5`, `0.4`, and `0.1`; request intent may shape retrieval queries but is not a ranking component.
 - Diversify results without sacrificing recommendation relevance.
 - Explain recommendations using only information and ranking signals actually available to the system.
-- Compare the new recommendation engine with the existing image-keyword recommendation flow.
+- Evaluate the end-to-end Backend + CLIP API flow, recording each step's inputs/outputs, latency, and memory use; calculate quality metrics from the returned candidates.
 
 The initial implementation must use metadata-based recommendation only. No audio-analysis service or additional machine-learning ranking model is required.
 
@@ -159,21 +159,21 @@ interface MusicPreference {
 
 Implementation requirements:
 
-- [ ] Inspect existing database conventions before deciding the physical table structure.
-- [ ] Add a user-scoped music preference representation using Knex migrations.
-- [ ] Store preferred/disliked genres and artists.
-- [ ] Store favorite tracks with stable provider identifiers and sufficient metadata to support recommendation retrieval.
-- [ ] Preserve artist and track provider IDs when available.
-- [ ] Use normalized values as fallback identifiers when provider IDs are unavailable.
-- [ ] Enforce uniqueness for equivalent preferences belonging to the same user.
-- [ ] Prevent conflicting preferred/disliked entries from silently coexisting for the same normalized preference.
-- [ ] Allow hard exclusions only for explicitly disliked genres or artists.
-- [ ] Ensure every read, create, update, replace, and delete operation is scoped to the authenticated user.
-- [ ] Implement transaction-safe updates when replacing a complete preference profile.
-- [ ] Add authenticated read and update APIs under the existing profile route conventions.
-- [ ] Reuse the existing song search implementation for favorite track lookup.
-- [ ] Support favorite artist selection by reusing returned artist metadata where possible. Extend the existing iTunes search integration for artist lookup only where required; do not create another provider client.
-- [ ] Preserve existing Favorites behavior and avoid conflating saved tracks with explicit music taste.
+- [x] Inspect existing database conventions before deciding the physical table structure.
+- [x] Add a user-scoped music preference representation using the repository's manual SQL convention.
+- [x] Store preferred/disliked genres and artists.
+- [x] Store favorite tracks with stable provider identifiers and sufficient metadata to support recommendation retrieval.
+- [x] Preserve artist and track provider IDs when available.
+- [x] Use normalized values as fallback identifiers when provider IDs are unavailable.
+- [x] Drop `music_preferences_identity_unique` in the manual migration; retain the no-conflict index/constraint at `(user_id, preference_type, normalized_value)`.
+- [x] Prevent conflicting preferred/disliked entries from silently coexisting for the same normalized preference.
+- [x] Allow hard exclusions only for explicitly disliked genres or artists.
+- [x] Ensure every read, create, update, replace, and delete operation is scoped to the authenticated user.
+- [x] Implement transaction-safe updates when replacing a complete preference profile.
+- [x] Add authenticated read and update APIs under the existing profile route conventions.
+- [x] Reuse the existing song search implementation for favorite track lookup.
+- [x] Support favorite artist selection by reusing returned artist metadata where possible; no second provider client was added.
+- [x] Preserve existing Favorites behavior and avoid conflating saved tracks with explicit music taste.
 
 Suggested API contract, subject to existing route naming conventions:
 
@@ -247,7 +247,13 @@ Dislikes alone do not qualify as a music taste profile.
 
 ### Task 4 — Implement Shared Music Taxonomy and Unified Recommendation Profile
 
-Create a shared normalization layer between CLIP output, user preferences, and music metadata.
+Create one shared normalization layer at `backend/src/shared/music/music-taxonomy.ts` between CLIP output, user preferences, and music metadata. Consolidate mappings now split across `backend/src/modules/vibe-scan/services/music-taxonomy.ts` into the shared module; keep only a temporary re-export there if needed for import compatibility.
+
+Use `CanonicalGenre` values `pop`, `rock`, `indie`, `electronic`, `hip-hop`, `r&b`, `jazz`, `classical`, `metal`, `folk`, and `other`. Implement `resolveMusicGenre(value): CanonicalGenre | null` in this order: exact canonical match, explicit alias lookup, ordered word-boundary classification rules, then `null`. Normalize with `normalizeMusicTerm` first. Keep rules deterministic and testable; unknown values must not silently become `other`.
+
+#### Genre taxonomy survey and database identity
+
+Apple/iTunes track search exposes `primaryGenreName` and catalog genre identifiers; treat these as provider metadata rather than a complete canonical vocabulary. Spotify artist genre fields and recommendation genre seeds are documented but deprecated, so they are not a stable runtime dependency. MusicBrainz exposes evolving genres/tags and community tagging; use it as an external vocabulary source, not VibeTune's ID system. Keep stable VibeTune canonical IDs and map provider labels to them. Add a `music_genres` table with canonical ID, display name, optional parent ID, active flag, and source metadata; use a related alias/source mapping table for provider labels. Store resolved user preferences by canonical ID and preserve submitted display labels for unresolved values. References: [Apple iTunes Search API](https://performance-partners.apple.com/search-api), [Spotify artist reference](https://developer.spotify.com/documentation/web-api/reference/get-an-artist), [Spotify genre seeds](https://developer.spotify.com/documentation/web-api/reference/get-recommendation-genres), [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API).
 
 The current CLIP implementation must remain responsible for visual context extraction only.
 
@@ -255,14 +261,18 @@ Do not assume CLIP directly understands the user's long-term music taste.
 
 Implementation requirements:
 
-- [ ] Inspect the actual CLIP response structure and existing keyword/score representation.
-- [ ] Define normalized music taxonomy values for supported genres and visual mood mappings.
-- [ ] Map existing CLIP keywords into normalized context attributes where a deterministic mapping exists.
-- [ ] Preserve original CLIP labels and their relative scores for traceability.
-- [ ] Represent unsupported or missing context attributes as unknown rather than inventing values.
-- [ ] Normalize user-selected genre and artist values through the same taxonomy where applicable.
-- [ ] Define a unified recommendation input combining visual context, persisted user taste, and current request intent.
-- [ ] Make taxonomy mappings deterministic and independently testable.
+- [x] Inspect the actual CLIP response structure and existing keyword/score representation.
+- [x] Define normalized music taxonomy values for supported genres and visual mood mappings.
+- [x] Consolidate genre resolution, CLIP keyword normalization, and `MOOD_MAP` in `backend/src/shared/music/music-taxonomy.ts`; replace the parallel Vibe Scan taxonomy with a compatibility re-export.
+- [x] Add the canonical genre registry and provider alias/source mapping table, seeded with the supported canonical taxonomy.
+- [x] Expand mood mappings and add a repeatable CLIP text-embedding generator for the expanded keyword catalog.
+- [ ] Regenerate/deploy a text embedding for every CLIP catalog label and verify the runtime catalog/embedding counts match. The current workspace has 5,084 keyword labels but 84 vectors; runtime safely uses only matching labels until regeneration.
+- [x] Map existing CLIP keywords into normalized context attributes where a deterministic mapping exists.
+- [x] Preserve original CLIP labels and their relative scores for traceability.
+- [x] Represent unsupported or missing context attributes as unknown rather than inventing values.
+- [x] Normalize user-selected genre and artist values through the same taxonomy where applicable.
+- [x] Define a unified recommendation input combining visual context, persisted user taste, and current request intent.
+- [x] Make taxonomy mappings deterministic and independently testable.
 
 Suggested internal model:
 
@@ -287,7 +297,7 @@ interface UnifiedRecommendationProfile {
     hardExclusions: MusicPreference[];
   };
 
-  intent: {
+  requestContext: {
     platform: string;
     contentType: string;
   };
@@ -392,13 +402,12 @@ Use the following initial scoring weights:
 
 ```text
 Final Score =
-    0.40 * Context Fit
-  + 0.35 * Intent Fit
-  + 0.15 * Taste Fit
-  + 0.10 * Metadata Quality
+    0.5 * contextFit
+  + 0.4 * tasteFit
+  + 0.1 * metadataQuality
 ```
 
-These weights are configurable starting points and must be evaluated against the fixed dataset before being treated as reliable.
+If a component is unknown, renormalize over the available component weights; do not substitute zero. Remove `intentTerm`/Intent Fit from ranking types, formula, component breakdown, explanations, and metrics. Content intent may still contribute search terms during retrieval.
 
 **Context Fit**
 
@@ -412,13 +421,13 @@ Use:
 
 Do not infer tempo, acoustic energy, instrumentation, or other audio characteristics.
 
-**Intent Fit**
+**Request intent (retrieval only)**
 
-Use only deterministic signals that can be justified by the current implementation.
+Use only deterministic signals to construct search queries. Do not score request intent or expose it as a recommendation component.
 
-For the initial implementation, intent may influence query construction and candidate provenance. Do not claim that a track is inherently suitable for a specific social platform based only on its genre or title.
+Intent may influence query construction and diagnostic query provenance. Do not claim that a track is inherently suitable for a specific social platform based only on its genre or title.
 
-If there is no reliable intent-specific signal for a candidate, treat the component as unknown.
+
 
 **Taste Fit**
 
@@ -557,15 +566,21 @@ The exact setup-required status code and response envelope must follow the exist
 
 ### Task 8 — Evaluate Recommendation Quality
 
-Create a fixed, versioned evaluation dataset.
+Run evaluation through the actual Backend + CLIP API flow and application's candidate retrieval path, not only a static fixture runner. For each stage, record input/output shape and counts, wall-clock duration, and process memory before/after/peak where available. Record model warm/cold state and separate CLIP, backend processing, and provider latency. Calculate quality metrics from API-returned candidates against documented scenario judgments. Keep fixtures for deterministic regression checks, but do not present fixture-only metrics as end-to-end evaluation.
 
-Use approximately 20–30 representative scenarios covering different combinations of:
+- [x] Add a fixed fixture dataset for regression with 20 distinct profile, context, and intent scenarios.
+- [x] Add a repeatable API-flow evaluation harness for Backend + CLIP that captures stage I/O, latency, memory, and returned candidates.
+- [x] Compute NDCG@10, taste/context compatibility, candidate coverage, diversity, and duplicate metrics from captured API results and relevance judgments.
+- [x] Add a controlled test that keeps context and intent fixed while changing the preferred genre, and checks deterministic output.
+- [ ] Run the Backend + CLIP API evaluation and record its results in [iss-002-evaluation-report.md](iss-002-evaluation-report.md).
+
+Use approximately 20Ã¢â‚¬â€œ30 representative scenarios covering different combinations of:
 
 - User music taste.
 - Visual context.
 - Current intent.
 
-Each scenario should contain:
+Each fixture regression scenario should contain:
 
 - A fixed user taste profile.
 - A fixed visual context or CLIP fixture.
@@ -573,15 +588,17 @@ Each scenario should contain:
 - A stable candidate catalog fixture.
 - Human relevance judgments or explicitly defined expected matching signals.
 
-Do not rely exclusively on live iTunes responses because provider results can change over time.
+For API-flow evaluation, pair scenario inputs with relevance judgments and score candidates actually returned by the API; the fixture catalog is not the live API candidate pool.
+
+Store a redacted response snapshot with each run because live catalog results change. Fixture tests remain regression coverage, not the primary end-to-end quality claim.
 
 **Baseline**
 
-Run the current image-keyword recommendation flow against the same scenarios using its existing behavior.
+Call the existing image-keyword Backend + CLIP flow for each evaluation scenario and capture the actual returned candidates and per-stage measurements.
 
 **Improved implementation**
 
-Run the personalized engine against the same fixtures.
+Call the personalized Backend + CLIP API flow with the same scenario inputs. Calculate baseline and personalized metrics from each API response's candidates using the same relevance judgments. Use deterministic fixture tests separately for regression checks.
 
 Measure:
 
@@ -660,7 +677,9 @@ Tune ranking weights only when supported by evaluation results. Record the origi
 - Users can create, edit, and remove preferred genres, disliked genres, favorite artists, disliked artists, and favorite tracks.
 - A profile qualifies with at least two distinct preferred genres or at least three distinct favorite tracks with usable metadata.
 - Existing Favorites functionality remains separate from explicit music taste selections.
-- Recommendations use visual context, user music taste, and current intent in retrieval or ranking.
+- Recommendations use visual context and user taste in ranking; current content intent may affect query generation only.
+- Final ranking uses `0.5 * contextFit + 0.4 * tasteFit + 0.1 * metadataQuality`, with missing components renormalized; there is no `intentTerm` or Intent Fit component.
+- Genre resolution uses the ordered canonical/alias/rule/unknown resolver, and genre identity is represented in the database registry.
 - Changing relevant music taste can change candidates or their ranking while visual context and intent remain fixed.
 - Explicit disliked genres and artists receive strong negative treatment; configured hard exclusions are applied when metadata confirms the match.
 - Missing metadata is treated as unknown, not as a mismatch.
@@ -672,7 +691,7 @@ Tune ranking weights only when supported by evaluation results. Record the origi
 - Personalized ranking is not overridden by the existing provider-level final ranking.
 - Random query shuffling and random score tie-breaking are not used in the evaluation path.
 - Duplicate tracks are removed and artist repetition is limited when enough suitable candidates exist.
-- The fixed evaluation dataset compares baseline and improved implementations using documented quality measures.
+- Backend + CLIP API evaluation records stage inputs/outputs, latency, memory, and quality scores calculated from API-returned candidates.
 - New APIs enforce authenticated user ownership.
 - The implementation does not require an audio-analysis service, paid LLM API, or additional recommendation microservice.
 
@@ -688,7 +707,7 @@ Tune ranking weights only when supported by evaluation results. Record the origi
 - Artist/genre diversification.
 - Ranking-signal-based recommendation explanations.
 - Vibe Scan integration with setup-required handling.
-- Fixed evaluation dataset and baseline comparison report.
+- Fixed fixture dataset for regression and Backend + CLIP API-flow evaluation with stage I/O, latency, memory, and metrics in [iss-002-evaluation-report.md](iss-002-evaluation-report.md).
 - Relevant unit and integration tests.
 - Updated API, schema, and rollout documentation.
 

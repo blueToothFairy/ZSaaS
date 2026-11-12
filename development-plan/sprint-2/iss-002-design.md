@@ -68,10 +68,10 @@ The implementation must not infer long-term music taste from images or claim aud
 - Support preferred/disliked genres, favorite/disliked artists, and favorite tracks.
 - Require at least two preferred genres or three usable favorite tracks before returning personalized recommendations.
 - Keep existing saved Favorites separate from explicit music taste selections.
-- Combine visual context, user taste, and current intent in retrieval and ranking.
+- Combine visual context and user taste in ranking; current request intent may shape retrieval queries only.
 - Explain recommendations using traceable ranking signals.
 - Reuse existing profile, song search, authentication, database, and caching modules.
-- Evaluate the new engine against the existing image-keyword flow using a fixed dataset.
+- Evaluate the new engine against the existing image-keyword flow through both deterministic fixture regression and end-to-end Backend + CLIP API runs.
 
 ### Non-Goals
 
@@ -203,7 +203,7 @@ All new Music Taste endpoints must require Clerk authentication.
 
 Every preference read and mutation must be scoped to the authenticated user's identity.
 
-The actual migration path, migration runner, and schema conventions must be confirmed during implementation before creating database changes.
+The repository has no automated Knex migration runner. Database changes are delivered as manual SQL in `backend/migrations/mig-002.sql`; apply the script separately from application deployment. Remove the redundant `music_preferences_identity_unique` index while retaining the `(user_id, preference_type, normalized_value)` no-conflict protection. Add a canonical `music_genres` registry (canonical ID, display name, optional parent, active state, source metadata) and provider/source alias mapping. Rollback keeps preference data intact while reverting application code.
 
 ---
 
@@ -289,6 +289,7 @@ Field descriptions:
 | sentiment | preferred or disliked |
 | preference_value | Original selected value |
 | normalized_value | Normalized identity used for matching |
+| canonical_genre_id | Resolved `music_genres.id` for known genre preferences; null for non-genres or unresolved labels |
 | provider | Metadata provider, such as itunes |
 | external_id | Provider-specific artist or track identifier |
 | display_name | User-facing value |
@@ -297,7 +298,9 @@ Field descriptions:
 | created_at | Creation time |
 | updated_at | Last update time |
 
-The physical table structure may be adjusted to follow existing database conventions after examining the current schema.
+The implemented schema uses `music_preferences` for preference rows and `music_taste_settings` for preferred languages and vocal preference. Both tables are keyed to the authenticated user through `user_profiles`.
+
+The settings row stores `preferred_languages` as JSONB and `vocal_preference` as a checked value. The `music_genres` registry owns stable canonical IDs; `music_genre_aliases` stores normalized aliases and their source names. User-selected aliases resolve to the canonical ID before preference insert, while the display name retains the original label.
 
 ### 4.2. Identity and Uniqueness
 
@@ -307,7 +310,7 @@ Use stable identity wherever possible.
 
 Normalize genre values using the shared taxonomy.
 
-Equivalent normalized genres belonging to the same user must not create duplicate preference records.
+Resolve known genres to the canonical genre ID and prevent duplicate preferences for that ID. Keep the existing `(user_id, preference_type, normalized_value)` no-conflict rule. Drop the redundant `music_preferences_identity_unique` index; include `DROP INDEX IF EXISTS public.music_preferences_identity_unique;` in the safe SQL change. Add `music_genres` and a source/alias mapping table so genre identity is managed centrally.
 
 **Artist**
 
@@ -552,6 +555,57 @@ Return recommendation explanations derived from actual positive ranking signals.
 
 Create a deterministic mapping layer for supported visual and music-related attributes.
 
+There must be one source of truth: consolidate the currently dispersed taxonomy in `backend/src/shared/music/music-taxonomy.ts`; remove duplicate mapping definitions from `backend/src/modules/vibe-scan/services/music-taxonomy.ts` or leave only a compatibility re-export. This shared module owns `normalizeMusicTerm`, canonical genre identifiers, aliases, resolver rules, CLIP keyword normalization, and `MOOD_MAP`.
+
+```typescript
+export type CanonicalGenre =
+  | "pop" | "rock" | "indie" | "electronic" | "hip-hop" | "r&b"
+  | "jazz" | "classical" | "metal" | "folk" | "other";
+
+export function resolveMusicGenre(value: string): CanonicalGenre | null;
+```
+
+Resolver order: normalize input; exact canonical match; explicit alias lookup; ordered word-boundary classification rules (for example `indie`, `metal`, then electronic aliases `electronic|edm|techno|house`); return `null` if unmatched. Rules must avoid accidental substring matches and be unit-testable. `other` is explicit, not the fallback for unknown input.
+
+#### Genre coverage survey
+
+Apple/iTunes exposes `primaryGenreName` and catalog genre identifiers; treat these as provider metadata rather than a complete canonical vocabulary. Spotify documents artist genres and recommendation genre seeds but marks those endpoints deprecated, so they are not a stable runtime dependency. MusicBrainz exposes an evolving genre/tag vocabulary with community-supplied values; use it as an external source, not VibeTune's ID system. Map provider labels into stable VibeTune canonical IDs and store source IDs/names separately. References: [Apple iTunes Search API](https://performance-partners.apple.com/search-api), [Spotify artist genres](https://developer.spotify.com/documentation/web-api/reference/get-an-artist), [Spotify genre seeds](https://developer.spotify.com/documentation/web-api/reference/get-recommendation-genres), [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API).
+
+Add a `music_genres` registry with canonical ID, display name, optional parent ID, active flag, and source metadata, plus an alias/source mapping for provider labels. Permit parent/child genres (e.g. electronic with house/techno aliases). Unresolved inputs remain unmapped and retain their display text; never fabricate an ID.
+
+#### Expanded CLIP vocabulary and mood mapping
+
+Retain current labels and expand the CLIP keyword catalog:
+
+```text
+weather: rainy, stormy, sunny, foggy, snowy, cloudy, windy, thunder, lightning, drizzle, misty, humid, icy, heatwave, breeze
+animals: wolf, lion, tiger, cat, dog, eagle, owl, fox, whale, shark, butterfly, dragon, snake, horse, crow
+feelings: happy, sad, melancholic, nostalgic, romantic, lonely, hopeful, angry, peaceful, anxious, dreamy, mysterious, dark, uplifting, energetic, calm, chill, epic, intense
+genres: lofi, jazz, classical, rock, indie, ambient, electronic, pop, hip hop, trap, orchestral, acoustic, techno, house, punk, metal, synthwave
+scenes: late night city, sunset beach, forest morning, empty road, rainy window, coffee shop, mountain sunrise, neon city, space travel, cyberpunk alley, desert horizon, underwater world
+times: midnight, dawn, twilight, evening, morning, afternoon
+```
+
+Map recognized labels through the shared context mapping and one `MOOD_MAP`, with explicit related genres/search terms. Allow scene, time, weather, feeling, and genre evidence to compose, without letting an unrelated label invent a mood. Preserve original CLIP labels and scores. Validate expanded terms against deployed model outputs; listing a term here does not imply the current model already recognizes it.
+
+Keyword indices must always match embedding row indices. The current workspace keyword array contains 5,084 labels while the current text embedding matrix contains 84 rows. The AI startup now ignores labels beyond the embedding rows and rejects a catalog that has fewer labels than vectors. The first 84 entries match the six requested categories. To activate additional catalog labels, install the optional `AI_CLIP/requirements-embedding-build.txt` dependencies and run `python build_vibe_embeddings.py` in `AI_CLIP/`; then deploy both generated `.npy` files together. The generator encodes the labels in order and validates the resulting `(keywordCount, 512)` shape.
+
+Extend `MOOD_MAP` to cover combinations represented by the expanded vocabulary:
+
+| Mood/context key | Supporting keywords | Canonical genre/search directions |
+|---|---|---|
+| joyful | happy, sunny, uplifting | pop, funk, upbeat pop |
+| melancholic | sad, lonely, rainy, midnight | indie, folk, melancholic indie |
+| nostalgic | nostalgic, sunset, evening | indie, acoustic, nostalgic acoustic |
+| romantic | romantic, sunset beach, twilight | pop, jazz, romantic jazz |
+| peaceful | calm, peaceful, forest morning, breeze | ambient, classical, calm instrumental |
+| dreamy | dreamy, misty, space travel, twilight | ambient, electronic, dream pop |
+| mysterious | mysterious, foggy, neon city, cyberpunk alley | electronic, jazz, dark electronic |
+| dark/intense | dark, stormy, thunder, intense | metal, rock, dark rock |
+| energetic/epic | energetic, epic, heatwave, mountain sunrise | electronic, orchestral, energetic electronic |
+
+These are deterministic retrieval associations, not claims about a track's measured audio mood. Preserve multiple supported context dimensions instead of collapsing every scene into one mood.
+
 Responsibilities:
 
 - Normalize genre names.
@@ -640,7 +694,7 @@ interface UnifiedRecommendationProfile {
     hardExclusions: MusicPreference[];
   };
 
-  intent: {
+  requestContext: {
     platform: string;
     contentType: string;
   };
@@ -796,15 +850,14 @@ Use the following initial weights:
 
 ```text
 Final Score =
-    0.40 * Context Fit
-  + 0.35 * Intent Fit
-  + 0.15 * Taste Fit
-  + 0.10 * Metadata Quality
+    0.5 * contextFit
+  + 0.4 * tasteFit
+  + 0.1 * metadataQuality
 ```
 
-These weights are initial configurable values.
+If a component is unknown, renormalize over the available component weights; do not substitute zero. Remove `intentTerm`/Intent Fit from ranking types, formula, component breakdown, explanations, and evaluation metrics. Request intent may contribute query terms during retrieval only.
 
-They must be evaluated against the fixed dataset before being treated as optimal.
+Evaluate them with the Backend + CLIP API scenarios and report measured results; fixture results remain regression evidence only.
 
 The system must not use the formula blindly when a component has no reliable evidence.
 
@@ -828,9 +881,9 @@ A candidate retrieved through a context-related query may receive supporting con
 
 Do not claim that the system has evaluated the actual audio's emotional character.
 
-### 8.3. Intent Fit
+### 8.3. Request intent (retrieval only)
 
-Intent Fit represents compatibility with the current request intent.
+Request intent may help construct relevant queries and preserve query provenance. It is not a ranking score.
 
 Use current intent to:
 
@@ -842,7 +895,7 @@ A platform name such as Instagram or TikTok does not by itself prove that a song
 
 Do not invent platform-specific audio quality, popularity, duration suitability, or licensing claims.
 
-Where no deterministic intent-related signal is available, mark Intent Fit as unknown for that candidate.
+
 
 ### 8.4. Taste Fit
 
@@ -1091,7 +1144,7 @@ Test:
 - Provenance merging.
 - Taste Fit.
 - Context Fit.
-- Intent Fit.
+- Metadata Quality.
 - Missing metadata behavior.
 - Explicit dislike penalties.
 - Hard exclusions.
@@ -1132,7 +1185,7 @@ Each scenario should include:
 - Stable candidate metadata fixtures.
 - Documented relevance judgments.
 
-Use identical fixtures for baseline and improved implementations.
+Use identical fixture catalogs for deterministic regression comparisons. For the primary API-flow run, submit the same scenario inputs to both flows and score each flow's returned candidate list; do not replace API candidates with the fixture catalog.
 
 Compare:
 
@@ -1168,7 +1221,7 @@ Also verify deterministic results for identical inputs and fixtures.
 
 ### 12.5. Baseline Comparison
 
-The baseline is the existing image-keyword recommendation flow.
+The primary evaluation must call the actual Backend + CLIP API flow to simulate the production request. Capture input and output at every stage (request, CLIP, normalized context, query plan, provider retrieval, ranked response), elapsed time per stage and end-to-end, and process memory (baseline, after stage, peak where measurable). Record whether CLIP is warm or cold. Calculate quality metrics from candidates returned by that API run against documented scenario judgments. Capture a sanitized provider/result snapshot for reproducibility. Fixture-only evaluation remains regression coverage and must be labeled separately; it is not a substitute for API-flow evaluation.
 
 The improved implementation is the new personalized recommendation flow.
 
@@ -1179,7 +1232,8 @@ The report must document:
 - Evaluation methodology.
 - Dataset version.
 - Metrics.
-- Ranking weights.
+- Ranking weights: Context 0.5, Taste 0.4, Metadata Quality 0.1.
+- Per-stage API inputs/outputs, latency, memory, and captured candidate results.
 - Results.
 - Limitations.
 
@@ -1249,7 +1303,7 @@ The initial implementation explicitly follows these decisions:
 | Visual analysis | Existing CLIP service |
 | Retrieval | Context + taste + hybrid queries |
 | Ranking | Weighted metadata-based ranking |
-| Initial weights | Context 0.40, Intent 0.35, Taste 0.15, Metadata 0.10 |
+| Initial weights | Context 0.5, Taste 0.4, Metadata Quality 0.1; request intent is retrieval-only |
 | Missing metadata | Unknown, not negative |
 | Diversification | Deterministic artist/genre constraints |
 | Persistence | Existing PostgreSQL + Knex |

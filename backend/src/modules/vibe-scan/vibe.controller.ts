@@ -10,7 +10,7 @@ export default class VibeScannerController {
   ) {}
 
   async getSongs(req: AuthenticatedRequest, res: Response): Promise<void> {
-    console.log('get songs');
+    const requestStartedAt = performance.now();
     const userId = req.userId;
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -36,29 +36,53 @@ export default class VibeScannerController {
       }
 
       const clientCountryCode = resolveCountryCodeFromRequest(req);
-      const songs = await this.vibeService.getVibeMatchingSongs(
+      const platform = typeof req.body?.platform === "string" ? req.body.platform.trim() : "unspecified";
+      const contentType = typeof req.body?.contentType === "string" ? req.body.contentType.trim() : "unspecified";
+      if (platform.length > 80 || contentType.length > 80) {
+        res.status(400).json({ success: false, error: "Intent values must be 80 characters or fewer" });
+        return;
+      }
+      const evaluationMode = process.env.ENABLE_ISS002_EVALUATION === "true"
+        && process.env.ISS002_EVALUATION_SECRET
+        && req.header("x-iss002-evaluation-key") === process.env.ISS002_EVALUATION_SECRET
+        ? req.header("x-iss002-evaluation-mode")
+        : undefined;
+      const requestContext = { platform: platform || "unspecified", contentType: contentType || "unspecified" };
+      if (evaluationMode === "baseline") {
+        const baseline = await this.vibeService.getBaselineWithEvaluation(req.file.buffer, req.file.originalname, req.file.mimetype, clientCountryCode);
+        res.status(200).json({
+          success: true,
+          songs: baseline.songs,
+          ...(evaluationMode ? { evaluation: { mode: evaluationMode, totalDurationMs: performance.now() - requestStartedAt, steps: baseline.steps } } : {}),
+        });
+        return;
+      }
+
+      const evaluation = evaluationMode === "personalized"
+        ? await this.vibeService.getVibeMatchingSongsWithEvaluation(
+          userId,
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype,
+          clientCountryCode,
+          requestContext
+        )
+        : undefined;
+      const recommendations = evaluation?.recommendations ?? await this.vibeService.getVibeMatchingSongs(
+        userId,
         req.file.buffer,
         req.file.originalname,
         req.file.mimetype,
-        clientCountryCode
+        clientCountryCode,
+        requestContext
       );
-
-      // Save to DB (async, non-blocking)
-      // this.aiRepo.create({
-      //   user_id: userId,
-      //   feature_type: "match_music",
-      //   input_params: {
-      //     imageFile: req.file.buffers
-      //   },
-      //   output_data: {
-      //     songs
-      //   }
-      // });
 
       // Return response
       res.status(200).json({
         success: true,
-        songs,
+        songs: recommendations.map((item) => ({ ...item.track, score: item.score, componentScores: item.componentScores, reasons: item.reasons })),
+        recommendations,
+        ...(evaluation ? { evaluation: { mode: evaluationMode, totalDurationMs: performance.now() - requestStartedAt, steps: evaluation.steps } } : {}),
       });
 
     } catch (error: any) {

@@ -7,6 +7,7 @@ from transformers import CLIPProcessor
 import io
 import psutil
 import os
+import time
 
 MODEL_PATH = "clip_vision_512.onnx"
 TEXT_EMB_PATH = "vibe_embeddings.npy"
@@ -25,7 +26,7 @@ app = FastAPI()
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 session: ort.InferenceSession = None
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+processor = CLIPProcessor.from_pretrained(CLIP_PROCESSOR_PATH)
 
 text_matrix = None
 keywords = None
@@ -57,6 +58,17 @@ def startup_event():
     text_matrix = np.load(TEXT_EMB_PATH)       # (N,512)
     keywords = np.load(KEYWORDS_PATH)          # (N,)
 
+    if len(keywords) < text_matrix.shape[0]:
+        raise ValueError(
+            f"Keyword catalog has {len(keywords)} labels but {text_matrix.shape[0]} text embeddings"
+        )
+    if len(keywords) > text_matrix.shape[0]:
+        print(
+            f"Keyword catalog has {len(keywords)} labels but only {text_matrix.shape[0]} embeddings; "
+            "ignoring labels without matching embeddings"
+        )
+        keywords = keywords[:text_matrix.shape[0]]
+
     text_matrix = text_matrix / np.linalg.norm(text_matrix, axis=1, keepdims=True)
 
 
@@ -76,6 +88,9 @@ async def ping():
 
 @app.post("/extract-vibes")
 async def extract(file: UploadFile = File(...)):
+    request_started = time.perf_counter()
+    process = psutil.Process(os.getpid())
+    memory_before_mb = process.memory_info().rss / 1024 / 1024
 
     if not file:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -85,6 +100,7 @@ async def extract(file: UploadFile = File(...)):
     if len(contents) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Image must be 10 MB or smaller")
 
+    decode_started = time.perf_counter()
     try:
         image = Image.open(io.BytesIO(contents))
         if image.width * image.height > MAX_IMAGE_PIXELS:
@@ -97,6 +113,7 @@ async def extract(file: UploadFile = File(...)):
         raise HTTPException(status_code=413, detail="Image dimensions are too large")
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid image")
+    decode_ms = (time.perf_counter() - decode_started) * 1000
 
     result = await run_in_threadpool(infer_vibes, image)
     return result
@@ -111,6 +128,7 @@ def infer_vibes(image: Image.Image):
         ["image_embeddings"],
         {"pixel_values": inputs["pixel_values"]}
     )[0]  # (1,512)
+    inference_ms = (time.perf_counter() - inference_started) * 1000
 
     # cosine similarity (already normalized)
     norm = np.linalg.norm(image_emb, axis=1, keepdims=True)
@@ -128,7 +146,33 @@ def infer_vibes(image: Image.Image):
         }
         for i in topk_idx
     ]
+    ranking_ms = (time.perf_counter() - ranking_started) * 1000
+    memory_info = process.memory_info()
+    peak_memory_bytes = getattr(memory_info, "peak_wset", None)
+    if peak_memory_bytes is None and os.name != "nt":
+        try:
+            import resource
+            peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            peak_memory_bytes = peak_rss if os.uname().sysname == "Darwin" else peak_rss * 1024
+        except (ImportError, AttributeError):
+            peak_memory_bytes = None
 
     return {
-        "top_keywords": top_keywords
+        "top_keywords": top_keywords,
+        "telemetry": {
+            "model_state": "warm",
+            "input_bytes": len(contents),
+            "timing_ms": {
+                "decode": round(decode_ms, 3),
+                "preprocess": round(preprocess_ms, 3),
+                "inference": round(inference_ms, 3),
+                "keyword_ranking": round(ranking_ms, 3),
+                "total": round((time.perf_counter() - request_started) * 1000, 3),
+            },
+            "memory_mb": {
+                "before": round(memory_before_mb, 3),
+                "after": round(memory_info.rss / 1024 / 1024, 3),
+                "peak": round(peak_memory_bytes / 1024 / 1024, 3) if peak_memory_bytes is not None else None,
+            },
+        },
     }

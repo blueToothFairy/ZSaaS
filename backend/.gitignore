@@ -2,6 +2,7 @@
 *.onnx
 
 dist/
+/.evaluation-dist/
 
 # Dependencies
 /node_modules
