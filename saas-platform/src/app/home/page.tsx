@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, SetStateAction, CSSProperties } from 'react';
-import { useAuth, useUser, useClerk } from "@clerk/nextjs";
+import { useAppAuth } from '../auth-provider';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import {
@@ -81,9 +81,7 @@ function getWeatherAssets(weather: WeatherData | null) {
 }
 
 export default function AppDashboard() {
-  const { getToken } = useAuth();
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { getToken, user, isLoaded, logout, addPassword, linkGoogle } = useAppAuth();
   const router = useRouter();
 
   // Redirect to landing page if not authenticated
@@ -100,6 +98,8 @@ export default function AppDashboard() {
   const [scanProgress, setScanProgress] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [authSettingsMessage, setAuthSettingsMessage] = useState('');
   
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [curatedSongs, setCuratedSongs] = useState<Song[]>([]);
@@ -414,16 +414,16 @@ export default function AppDashboard() {
       <div className="space-y-4 relative z-10 mt-auto pt-8 border-t border-white/10">
         <div className="flex items-center gap-3 px-4 py-2">
           <img
-            src={user?.imageUrl || 'https://i.pravatar.cc/150?u=guest'}
+            src="https://i.pravatar.cc/150?u=guest"
             alt="Profile"
             className="w-10 h-10 rounded-full border-2 border-white/15 object-cover"
           />
           <div className="min-w-0">
-            <p className="font-medium text-sm truncate">{user?.firstName || 'Guest'}</p>
-            <p className="text-xs text-white/60 truncate">{user?.primaryEmailAddress?.emailAddress || 'User'}</p>
+            <p className="font-medium text-sm truncate">{user?.name || 'Guest'}</p>
+            <p className="text-xs text-white/60 truncate">{user?.email || 'User'}</p>
           </div>
         </div>
-        <button onClick={() => signOut({ redirectUrl: '/landing-page' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-white/75 hover:bg-red-500/20 hover:text-red-300 transition-all border border-transparent">
+        <button onClick={async () => { await logout(); router.push('/landing-page'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-white/75 hover:bg-red-500/20 hover:text-red-300 transition-all border border-transparent">
           <LogOut size={20} /> Logout
         </button>
       </div>
@@ -473,7 +473,7 @@ export default function AppDashboard() {
             <Menu size={24} />
           </button>
           <h2 className="text-3xl md:text-4xl font-semibold drop-shadow-md">
-            {getGreeting()}, <span className="text-white">{user?.firstName || 'Alex'}</span>
+            {getGreeting()}, <span className="text-white">{user?.name || 'Alex'}</span>
           </h2>
           <div className="w-10 md:hidden"></div>
         </div>
@@ -664,15 +664,15 @@ export default function AppDashboard() {
               <div className="flex flex-col md:flex-row items-center gap-8">
                 <div className="relative flex-shrink-0">
                   <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-white/10 border-2 border-white/20">
-                    <img src={user?.imageUrl || 'https://i.pravatar.cc/150?u=guest'} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                    <img src="https://i.pravatar.cc/150?u=guest" alt="Avatar" className="w-full h-full rounded-full object-cover" />
                   </div>
                 </div>
 
                 <div className="relative z-10 text-center md:text-left flex-1">
                   <h2 className="text-3xl md:text-4xl font-bold mb-2">
-                    {user?.firstName || 'Guest User'}
+                    {user?.name || 'Guest User'}
                   </h2>
-                  <p className="text-white/60 font-medium text-lg mb-6">{user?.primaryEmailAddress?.emailAddress || '@guest'}</p>
+                  <p className="text-white/60 font-medium text-lg mb-6">{user?.email || '@guest'}</p>
                   
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                     <div className="px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-bold flex items-center gap-2">
@@ -680,6 +680,21 @@ export default function AppDashboard() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="glass-panel rounded-2xl p-6 mb-8">
+              <h3 className="text-xl font-semibold mb-2">Sign-in methods</h3>
+              <p className="text-sm text-white/60 mb-5">Link another method only after signing in to this account. Matching email addresses are never linked automatically.</p>
+              {authSettingsMessage && <p role="status" className="mb-4 text-sm text-sky-100">{authSettingsMessage}</p>}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button onClick={async () => { setAuthSettingsMessage(''); try { await linkGoogle(); } catch (error) { setAuthSettingsMessage(error instanceof Error ? error.message : 'Could not link Google.'); } }} className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-medium hover:bg-white/15">
+                  Link Google account
+                </button>
+                <form onSubmit={async (event) => { event.preventDefault(); setAuthSettingsMessage(''); try { await addPassword(newPassword); setNewPassword(''); setAuthSettingsMessage('Password added to this account.'); } catch (error) { setAuthSettingsMessage(error instanceof Error ? error.message : 'Could not add password.'); } }} className="flex flex-1 gap-2">
+                  <input type="password" minLength={10} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Add a password (10+ characters)" autoComplete="new-password" className="min-w-0 flex-1 rounded-xl border border-white/20 bg-slate-950/40 px-3 text-sm outline-none focus:border-sky-300" />
+                  <button className="rounded-xl bg-sky-200 px-4 py-3 text-sm font-semibold text-slate-950">Add password</button>
+                </form>
               </div>
             </div>
 

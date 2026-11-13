@@ -7,17 +7,17 @@ declare global {
 }
 
 const createConnection = (): Knex => {
+  const host = process.env.DB_HOST;
+  const isLocalDatabase = host === 'localhost' || host === '127.0.0.1' || host === '::1';
   return knex({
     client: "pg",
     connection: {
-      host: process.env.DB_HOST,
+      host,
       port: Number(process.env.DB_PORT),
       user: process.env.DB_USER ,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      ssl: {
-        rejectUnauthorized: false
-      }
+      ssl: isLocalDatabase ? false : { rejectUnauthorized: false }
     } as any,
     pool: {
       min: 0,

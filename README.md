@@ -86,7 +86,7 @@ VibeTune follows a focused flow to help creators find a soundtrack for their con
 - **Intent-driven recommendations** – A focused list of suitable tracks with clear explanations, tailored to both the content and your musical intent. Mood and weather are optional context, not the product's main purpose.
 - **Refinement** – Adjust mood, energy, genre, or vocal preference and re-run recommendations without starting over.
 - **Save to project** – Select a track and save it to your project for later use.
-- **User authentication** – Secure authentication via Clerk with saved projects and favorites.
+- **User authentication** – First-party email/password and Google sign-in with JWT access tokens and rotating refresh sessions.
 
 ### Planned (not yet implemented)
 
@@ -110,7 +110,7 @@ The following capabilities are part of the product roadmap and are not yet part 
 | **Styling** | Tailwind CSS | Latest |
 | **UI Components** | Shadcn/UI + Radix UI | Latest |
 | **Motion** | Framer Motion (motion/react) | Latest |
-| **Authentication** | Clerk | 6.36+ |
+| **Authentication** | First-party JWT and Google OAuth | Built-in |
 | **HTTP Client** | Axios | 1.13+ |
 | **Image Processing** | Browser-Image-Compression | 2.0+ |
 | **Database Client** | Supabase JS | 2.90+ |
@@ -122,7 +122,7 @@ The following capabilities are part of the product roadmap and are not yet part 
 | **Runtime** | Node.js | 18+ |
 | **Framework** | Express.js | 5.2+ |
 | **Language** | TypeScript | 5.9+ |
-| **Auth Middleware** | Clerk Express | 1.7+ |
+| **Auth Middleware** | First-party bearer-token middleware | Built-in |
 | **Database** | PostgreSQL | 12+ |
 | **Query Builder** | Knex.js | 3.1+ |
 | **File Upload** | Multer | 2.0+ |
@@ -176,7 +176,7 @@ The following capabilities are part of the product roadmap and are not yet part 
 
 ### Account Prerequisites
 
-- **Clerk Account** – Register at [clerk.com](https://clerk.com) for authentication
+- **Google OAuth Client** – Configure a Google OAuth client and callback URL for Google sign-in
 - **iTunes Account** – (Optional, for advanced features)
 - **Supabase Account** – (Optional) For managed PostgreSQL hosting
 
@@ -246,9 +246,15 @@ DB_PASSWORD=your_password
 DB_NAME=vibetune_db
 DB_PORT=5432
 
-# Clerk Authentication
-CLERK_SECRET_KEY=your_clerk_secret_key
-CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+# First-party Authentication
+JWT_SECRET=replace-with-a-random-secret-at-least-32-characters
+JWT_ISSUER=vibetune-api
+JWT_AUDIENCE=vibetune-app
+ACCESS_TOKEN_TTL_SECONDS=900
+REFRESH_TOKEN_TTL_DAYS=30
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
 
 # AI Service
 AI_SERVICE_URL=http://localhost:8000
@@ -267,18 +273,10 @@ FRONTEND_URL=http://localhost:3000
 
 ```env
 # Server
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
-
 # API Endpoints
 NEXT_PUBLIC_API_URL=http://localhost:5000
+API_URL=http://localhost:5000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Authentication
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/home
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/home
 
 # Supabase (Optional)
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -382,7 +380,15 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibetune_db
       NODE_ENV: development
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: vibetune-api
+      JWT_AUDIENCE: vibetune-app
+      ACCESS_TOKEN_TTL_SECONDS: 900
+      REFRESH_TOKEN_TTL_DAYS: 30
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: http://localhost:3000/api/auth/google/callback
+      FRONTEND_URL: http://localhost:3000
       AI_SERVICE_URL: http://ai-service:8000
     depends_on:
       postgres:
@@ -412,7 +418,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:5000
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      API_URL: http://backend:5000
     depends_on:
       - backend
       - ai-service
@@ -448,7 +454,7 @@ cd backend
 docker build -t vibetune-backend .
 docker run -p 5000:5000 \
   -e DATABASE_URL=postgresql://postgres:password@host.docker.internal:5432/vibetune_db \
-  -e CLERK_SECRET_KEY=your_key \
+  -e JWT_SECRET=your_key \
   vibetune-backend
 ```
 
@@ -477,8 +483,12 @@ docker run -p 8000:8000 vibetune-ai
 | `DB_PASSWORD` | string | **Yes** | N/A | secure_pass | Database password |
 | `DB_NAME` | string | **Yes** | N/A | vibetune_db | Database name |
 | `DB_PORT` | number | No | 5432 | 5432 | Database port |
-| `CLERK_SECRET_KEY` | string | **Yes** | N/A | sk_test_xxxxx | Clerk authentication secret |
-| `CLERK_PUBLISHABLE_KEY` | string | **Yes** | N/A | pk_test_xxxxx | Clerk public key |
+| `JWT_SECRET` | string | **Yes** | N/A | random 32+ char secret | JWT HMAC signing secret |
+| `GOOGLE_CLIENT_ID` | string | For Google sign-in | N/A | OAuth client ID | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | string | For Google sign-in | N/A | OAuth secret | Google OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | string | For Google sign-in | N/A | http://localhost:3000/api/auth/google/callback | OAuth callback via frontend proxy |
+| `ACCESS_TOKEN_TTL_SECONDS` | number | No | 900 | 900 | Access token lifetime |
+| `REFRESH_TOKEN_TTL_DAYS` | number | No | 30 | 30 | Refresh session lifetime |
 | `AI_SERVICE_URL` | string | **Yes** | N/A | http://localhost:8000 | AI service endpoint |
 | `AI_SERVICE_TIMEOUT` | number | No | 30000 | 30000 | AI API timeout (ms) |
 | `ITUNES_API_URL` | string | No | https://itunes.apple.com/search | (as shown) | iTunes search endpoint |
@@ -490,14 +500,9 @@ docker run -p 8000:8000 vibetune-ai
 
 | Variable | Type | Required | Default | Example | Description |
 |----------|------|----------|---------|---------|-------------|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | string | **Yes** | N/A | pk_test_xxxxx | Public Clerk key (exposed to client) |
-| `CLERK_SECRET_KEY` | string | **Yes** | N/A | sk_test_xxxxx | Clerk secret (server-side only) |
 | `NEXT_PUBLIC_API_URL` | string | **Yes** | N/A | http://localhost:5000 | Backend API base URL |
+| `API_URL` | string | **Yes** | N/A | http://localhost:5000 | Next.js API rewrite destination |
 | `NEXT_PUBLIC_APP_URL` | string | No | http://localhost:3000 | (as shown) | Frontend app URL |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | string | No | /sign-in | (as shown) | Sign-in page route |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | string | No | /sign-up | (as shown) | Sign-up page route |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | string | No | /home | (as shown) | Redirect after sign-in |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | string | No | /home | (as shown) | Redirect after sign-up |
 | `NEXT_PUBLIC_SUPABASE_URL` | string | No | N/A | https://your.supabase.co | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | string | No | N/A | eyJxxx... | Supabase anon key |
 | `NEXT_PUBLIC_GOOGLE_AI_KEY` | string | No | N/A | AIzaSyD... | Google AI (Gemini) API key |
@@ -739,7 +744,7 @@ curl -X GET http://localhost:5000/api/vibe-scan/today-vibe \
 **Upload Image for Vibe Analysis (Auth Required):**
 ```bash
 curl -X POST http://localhost:5000/api/vibe-scan \
-  -H "Authorization: Bearer <CLERK_TOKEN>" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -F "file=@/path/to/image.jpg"
 ```
 
@@ -774,15 +779,31 @@ http://localhost:5000/api
 
 ### Authentication
 
-All endpoints marked with 🔒 require Clerk authentication:
+All endpoints marked with 🔒 require first-party authentication:
 
 ```bash
-Authorization: Bearer <CLERK_TOKEN>
+Authorization: Bearer <ACCESS_TOKEN>
 ```
 
-Obtain the token from Clerk's `useUser()` hook in React or via Clerk's `getToken()` method.
+The frontend restores access through `POST /api/auth/refresh` on startup. Refresh tokens are sent only as HttpOnly cookies.
+
+Apply `backend/src/modules/auth/schema.sql` to PostgreSQL before starting the backend. The auth tables start empty; existing test accounts are not imported.
 
 ### Endpoints
+
+#### Authentication Endpoints
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/auth/register` | Create an email/password account |
+| POST | `/auth/login` | Sign in with email/password |
+| POST | `/auth/refresh` | Rotate the refresh cookie and restore an access token |
+| POST | `/auth/logout` | Revoke the current refresh session |
+| GET | `/auth/google` | Start Google sign-in |
+| GET | `/auth/google/callback` | Complete Google sign-in or explicit linking |
+| POST | `/auth/google/link/start` | Start explicit Google account linking (access token required) |
+| POST | `/auth/password/link` | Add a password to the signed-in account |
+| GET | `/auth/me` | Read the current user profile |
 
 #### Vibe Scanning Endpoints
 
@@ -850,7 +871,7 @@ Content-Type: application/json
 
 | Field | Value |
 |-------|-------|
-| **Auth Required** | ✅ Yes (Clerk) |
+| **Auth Required** | ✅ Yes (JWT access token) |
 | **Content-Type** | multipart/form-data |
 | **Max File Size** | 10MB |
 | **Rate Limit** | 30 req/min |
@@ -881,7 +902,7 @@ formData.append('file', imageFile); // File object from input
 const response = await fetch('http://localhost:5000/api/vibe-scan', {
   method: 'POST',
   headers: {
-    'Authorization': `Bearer ${clerkToken}`
+    'Authorization': `Bearer ${accessToken}`
   },
   body: formData
 });
@@ -939,7 +960,7 @@ console.log(data.songs);
 ```json
 {
   "error": "Unauthorized",
-  "details": "Missing or invalid Clerk token"
+  "details": "Missing or invalid access token"
 }
 ```
 
@@ -1012,7 +1033,7 @@ vibetune/
 │       ├── proxy.ts                # API proxy configuration
 │       │
 │       ├── app/
-│       │   ├── layout.tsx          # Root layout (Clerk provider, metadata)
+│       │   ├── layout.tsx          # Root layout (auth provider, metadata)
 │       │   ├── page.tsx            # Home page (landing/hero)
 │       │   ├── globals.css         # Global styles
 │       │   │
@@ -1021,11 +1042,11 @@ vibetune/
 │       │   │
 │       │   ├── sign-in/
 │       │   │   └── [[...sign-in]]/
-│       │   │       └── page.tsx    # Clerk sign-in page
+│       │   │       └── page.tsx    # First-party sign-in page
 │       │   │
 │       │   ├── sign-up/
 │       │   │   └── [[...sign-up]]/
-│       │   │       └── page.tsx    # Clerk sign-up page
+│       │   │       └── page.tsx    # First-party sign-up page
 │       │   │
 │       │   └── components/
 │       │       ├── figma/
@@ -1105,7 +1126,7 @@ vibetune/
 │           │   └── knexClient.ts    # Knex.js database connection
 │           │
 │           └── types/
-│               └── ClerkRequest.ts  # Extended Express Request w/ Clerk
+│               └── AuthenticatedRequest.ts  # Extended request with internal user ID
 │
 ├── AI_CLIP/                         # 🤖 AI/ML Service (Python + FastAPI)
 │   ├── package.json                 # (Python equivalent: requirements.txt)
@@ -1131,7 +1152,7 @@ vibetune/
 
 | Directory | Purpose | Responsibility |
 |-----------|---------|-----------------|
-| **saas-platform** | React-based user interface | UI/UX, client-side logic, Clerk integration |
+| **saas-platform** | React-based user interface | UI/UX, client-side logic, first-party authentication |
 | **backend** | REST API server | Business logic, database, external APIs, auth |
 | **AI_CLIP** | Machine learning inference | Image analysis, vibe extraction, embeddings |
 | **shared** | Cross-service utilities | Types, database clients, common interfaces |

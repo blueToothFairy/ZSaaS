@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import axios from 'axios';
 import SongSearchService from "./services/index.js";
-import ClerkRequest from "../../shared/types/ClerkRequest.js";
 import { resolveCountryCodeFromRequest } from "../../shared/utils/requestCountry.js";
 
 export default class SongSearchController {
