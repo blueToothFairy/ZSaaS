@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import axios from 'axios';
 import VibeScannerService from "./services/index.js";
-import ClerkRequest from "../../shared/types/ClerkRequest.js";
+import AuthenticatedRequest from "../../shared/types/AuthenticatedRequest.js";
 import { resolveCountryCodeFromRequest } from "../../shared/utils/requestCountry.js";
 
 export default class VibeScannerController {
@@ -9,9 +9,9 @@ export default class VibeScannerController {
     private readonly vibeService: VibeScannerService
   ) {}
 
-  async getSongs(req: ClerkRequest, res: Response): Promise<void> {
+  async getSongs(req: AuthenticatedRequest, res: Response): Promise<void> {
     console.log('get songs');
-    const userId = req.auth.userId;
+    const userId = req.userId;
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
       return;

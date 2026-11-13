@@ -167,8 +167,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.25);
 }
-
-/* Clerk auth: force social button labels (e.g. "Continue with Google") to stay white */
-.cl-socialButtonsBlockButtonText {
-  color: #ffffff !important;
-}

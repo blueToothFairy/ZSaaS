@@ -1,5 +1,5 @@
 import { Response } from "express";
-import ClerkRequest from "../../shared/types/ClerkRequest.js";
+import AuthenticatedRequest from "../../shared/types/AuthenticatedRequest.js";
 import FavoritesService from "./services/favorites.service.js";
 import { CreateFavoriteDTO } from "./dto/favorite.dto.js";
 
@@ -8,9 +8,9 @@ export class ProfileController {
     private readonly favoritesService: FavoritesService
   ) {}
 
-  async getFavorites(req: ClerkRequest, res: Response) {
+  async getFavorites(req: AuthenticatedRequest, res: Response) {
     try {
-      const userId = req.auth?.userId;
+      const userId = req.userId;
       
       if (!userId) {
         return res.status(401).json({ success: false, message: "Unauthorized - No userId" });
@@ -32,8 +32,8 @@ export class ProfileController {
     }
   }
 
-  async addFavorite(req: ClerkRequest, res: Response) {
-    const userId = req.auth.userId;
+  async addFavorite(req: AuthenticatedRequest, res: Response) {
+    const userId = req.userId;
     try {
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -65,8 +65,8 @@ export class ProfileController {
     }
   }
 
-  async removeFavorite(req: ClerkRequest, res: Response) {
-    const userId = req.auth.userId;
+  async removeFavorite(req: AuthenticatedRequest, res: Response) {
+    const userId = req.userId;
     const songId = this.extractSongId(req.params.songId);
 
     try {
@@ -104,8 +104,8 @@ export class ProfileController {
     }
   }
 
-  async isFavorited(req: ClerkRequest, res: Response) {
-    const userId = req.auth.userId;
+  async isFavorited(req: AuthenticatedRequest, res: Response) {
+    const userId = req.userId;
     const songId = this.extractSongId(req.params.songId);
 
     try {

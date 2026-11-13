@@ -1,19 +1,19 @@
 'use client'
 
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
 import { useEffect } from 'react';
+import { useAppAuth } from '../auth-provider';
 
 const LandingPageVibeTune = () => {
   const router = useRouter();
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, user } = useAppAuth();
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
-    if (isLoaded && userId) {
+    if (isLoaded && user) {
       router.push('/home');
     }
-  }, [isLoaded, userId, router]);
+  }, [isLoaded, user, router]);
 
   // Giả lập dữ liệu ảnh avatar cho nhóm
   const avatars = [

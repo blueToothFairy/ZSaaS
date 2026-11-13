@@ -1,7 +1,10 @@
 import { Router, Request, Response } from "express";
 import profileController from "./profile.module.js";
+import { requireAccessToken } from '../../shared/middleware/requireAccessToken.js';
+import { createAuthenticatedLimiter } from '../../shared/middleware/rateLimiting.js';
 
 const profileRouter = Router();
+profileRouter.use(requireAccessToken, createAuthenticatedLimiter());
 
 // Get all favorites
 profileRouter.get(

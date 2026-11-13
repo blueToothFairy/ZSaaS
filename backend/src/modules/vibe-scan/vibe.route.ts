@@ -1,10 +1,12 @@
 import { Request, Response, Router } from 'express';
-import { requireAuth } from '@clerk/express';
 import vibeController from './vibe.module.js';
 import multer from 'multer';
-import ClerkRequest from '../../shared/types/ClerkRequest.js';
+import AuthenticatedRequest from '../../shared/types/AuthenticatedRequest.js';
+import { requireAccessToken } from '../../shared/middleware/requireAccessToken.js';
+import { createAuthenticatedLimiter } from '../../shared/middleware/rateLimiting.js';
 
 const vibeScannerRouter = Router();
+vibeScannerRouter.use(requireAccessToken, createAuthenticatedLimiter());
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -13,9 +15,8 @@ const upload = multer({
 
 vibeScannerRouter.post(
   "/",
-  requireAuth(),
   upload.single('file'),
-  (req: Request, res: Response) => vibeController.getSongs(req as ClerkRequest, res)
+  (req: Request, res: Response) => vibeController.getSongs(req as AuthenticatedRequest, res)
 );
 
 export default vibeScannerRouter;

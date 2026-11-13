@@ -8,69 +8,77 @@
 
 ## 1) Objective
 
-Deliver a secure first-party authentication flow that supports email/password and Google sign-in and protects existing API routes. The system currently has only test users, so the new auth store starts empty and no Clerk accounts or user records need migration.
+Deliver a secure first-party authentication flow that supports email/password and Google sign-in and protects existing API routes. The system currently has only test users; existing `user_profiles` remain auth-disabled, and no user migration or identity mapping is needed.
 
 ## 2) Tasks
 
 ### Task 1 — Confirm Security and Deployment Decisions
 
-- [ ] Inventory all Clerk references, protected routes, and persisted user IDs.
+- [x] Inventory active Clerk references, protected routes, and user identity usage.
 - [ ] Confirm production domains, Google OAuth callback URLs, secrets, cookie policy, token lifetimes, and the explicit account-linking/reauthentication UX.
-- [x] Confirm that current users are test accounts and do not require migration; use a clean user store for the new auth system.
+- [x] Confirm that current users are test accounts and do not require migration; keep existing test profiles auth-disabled in the new auth system.
 
 ### Task 2 — Add Authentication Data Model
 
-- [ ] Define users, password credentials, OAuth identities, and refresh sessions with constraints and indexes.
-- [ ] Prepare manual SQL schema changes and a clean initialization procedure consistent with the repository's database workflow.
-- [ ] Identify development-only rows owned by test Clerk IDs and decide whether to clear or isolate them; do not map them to new users.
+- [x] Define password credentials, OAuth identities, and refresh sessions attached to `user_profiles`, with constraints and indexes.
+- [x] Prepare SQL schema changes extending `user_profiles`; existing test profiles default to `auth_enabled = false` and are not migrated.
+- [x] Confirm existing test profiles are not mapped to new auth accounts; no old test-user migration is needed.
 
 ### Task 3 — Implement Backend Authentication
 
-- [ ] Add the `auth` backend module with DTO validation, service, repository, controller, routes, and app registration.
-- [ ] Implement password registration and login with a maintained password hash function and generic credential errors.
-- [ ] Implement Google Authorization Code flow, state validation, and provider-subject identity lookup.
-- [ ] If the Google identity is already linked, sign in to its existing account. If only the verified email matches a password account, do not create or link an account; require authentication through an existing method and explicit Google-link confirmation.
-- [ ] If password registration uses an email already owned by a Google account, return an account-exists response instead of creating a duplicate; allow password addition only after authenticating to the existing account and explicitly confirming.
-- [ ] Add authenticated linking flows that verify the existing session and explicit user intent before adding a Google identity or password credential; reject identity and email conflicts safely.
-- [ ] Issue signed short-lived access JWTs and HttpOnly refresh cookies; persist only refresh-token hashes.
-- [ ] Implement refresh rotation, reuse detection, logout/revocation, and `/api/auth/me`.
-- [ ] Add token verification middleware and typed user identity attachment.
-- [ ] Replace Clerk identity usage in protected routes, handlers, and authenticated rate limiting.
-- [ ] Apply rate limits and consistent validation/authentication errors to auth endpoints.
+- [x] Add the `auth` backend module using the project pattern: DTOs, interface, Knex repository, service, class controller, route, and module wiring.
+- [x] Implement password registration and login with scrypt password hashes and generic credential errors.
+- [x] Implement Google Authorization Code flow, signed state validation, and provider-subject identity lookup.
+- [x] If the Google identity is already linked, sign in to its existing account. If only the verified email matches a password account, do not create or link an account; require authentication through an existing method and explicit Google-link confirmation.
+- [x] If password registration uses an email already owned by a Google account, return an account-exists response instead of creating a duplicate; allow password addition only after authenticating to the existing account and explicitly confirming.
+- [x] Add authenticated linking flows that verify the existing session and explicit user intent before adding a Google identity or password credential; reject identity and email conflicts safely.
+- [x] Issue signed short-lived access JWTs and HttpOnly refresh cookies; persist only refresh-token hashes.
+- [x] Implement refresh rotation, reuse detection, logout/revocation, and `/api/auth/me`.
+- [x] Add token verification middleware and typed user identity attachment.
+- [x] Replace Clerk identity usage in protected routes, handlers, and authenticated rate limiting.
+- [x] Apply rate limits and consistent validation/authentication errors to auth endpoints.
 
 ### Task 4 — Implement Frontend Authentication
 
-- [ ] Replace Clerk provider, proxy middleware, hosted sign-in/sign-up widgets, and Clerk hooks with first-party auth UI and session handling.
-- [ ] Add email/password sign-up and sign-in forms plus Google sign-in entry point.
-- [ ] Keep access tokens in memory; use the refresh cookie to renew sessions and retry eligible API requests once.
-- [ ] On application startup, call `/api/auth/refresh` and keep auth state unresolved until it succeeds or fails definitively.
-- [ ] Make protected-route guards wait for startup refresh before rendering protected content or redirecting to sign-in; prevent protected API calls until the access token is restored.
-- [ ] Clear state on logout or unrecoverable refresh failure.
-- [ ] Ensure redirect destinations are allow-listed and auth errors are accessible and understandable.
+- [x] Replace Clerk provider, hosted widgets, and hooks with first-party auth UI and session handling; delete the pass-through `src/proxy.ts` because it performed no auth work.
+- [x] Add email/password sign-up and sign-in forms plus Google sign-in entry point.
+- [x] Keep access tokens in memory; use the refresh cookie to renew sessions and retry eligible API requests once.
+- [x] On application startup, call `/api/auth/refresh` and keep auth state unresolved until it succeeds or fails definitively.
+- [x] Make protected-route guards wait for startup refresh before rendering protected content or redirecting to sign-in; prevent protected API calls until the access token is restored.
+- [x] Clear state on logout or unrecoverable refresh failure.
+- [x] Restrict OAuth redirects to the configured frontend origin and show accessible auth errors.
 
 ### Task 5 — Initialize the New User Store
 
-- [ ] Apply the schema with an empty users, credentials, OAuth identities, and refresh sessions store.
-- [ ] Clear or isolate any development records tied to test Clerk IDs; do not backfill identities or ownership.
-- [ ] Verify that newly registered email and Google users receive distinct internal IDs and that new user-owned records use those IDs.
-- [ ] Document the cutover and rollback sequence, including session revocation behavior.
+- [x] Apply the schema to local PostgreSQL; auth-enabled accounts start empty and the schema extends `user_profiles` without importing test users.
+- [x] Leave existing test profile rows auth-disabled; do not backfill identities or ownership.
+- [x] Verify a newly registered email account receives an internal ID used by `/api/auth/me` (automated).
+- [ ] Verify Google-created accounts and product-owned records use distinct/internal IDs; requires Google OAuth or a dedicated integration fixture.
+- [x] Document the cutover and rollback sequence, including session revocation behavior.
 
 ### Task 6 — Remove Clerk Integration
 
-- [ ] Remove Clerk dependencies and imports from backend and frontend.
-- [ ] Remove `CLERK_*` environment variables and replace setup documentation with first-party auth and Google OAuth configuration.
-- [ ] Search the repository for remaining Clerk-specific code, copy, configuration, and types; remove only obsolete references.
+- [x] Remove Clerk dependencies and imports from backend and frontend.
+- [x] Remove active `CLERK_*` environment variables and replace setup documentation with first-party auth and Google OAuth configuration.
+- [x] Search active source/configuration for Clerk-specific code; retain historical issue notes only where they document the completed migration.
 
 ### Task 7 — Review and Verify
 
-- [ ] Verify registration, login, invalid credentials, duplicate email, Google callback/state failures, refresh rotation, reuse detection, logout, and expired sessions.
+- [x] Add `backend/scripts/verify-auth.mjs` for registration/login, duplicate and invalid credentials, refresh rotation/reuse, logout, token expiry, protected routes, local CORS/cookies, and Google OAuth start/state-error handling. Run with `npm run verify:auth` when the backend and local PostgreSQL are available; it creates one uniquely named test account. Completing Google sign-in/linking still requires interactive provider consent.
+
+- [x] Verify registration, login, invalid credentials, duplicate email, refresh rotation, refresh-token reuse revocation, and logout with `backend/scripts/verify-auth.mjs` against local PostgreSQL. All scripted checks passed, including cookie attributes, local CORS, valid-token identity, malformed and expired access-token rejection, Google OAuth redirect, and invalid callback state; each run creates one uniquely named account that remains in the database.
+- [x] Verify Google OAuth starts at the provider and callbacks with missing code/state or invalid state cookie are rejected.
+- [ ] Verify an expired refresh session is rejected.
 - [ ] Verify an already-linked Google identity signs into its existing account, while a Google email matching a password account does not auto-link or create a duplicate and requires existing-method authentication plus explicit linking.
 - [ ] Verify password registration with an email already used by Google is rejected as a duplicate and requires authenticated, explicit password linking.
 - [ ] Verify startup refresh resolves before protected-route decisions for valid, expired, missing, and failed refresh sessions.
-- [ ] Verify protected endpoints reject missing, malformed, expired, or incorrectly signed tokens and use the token subject as the user identity.
-- [ ] Verify refresh cookies and CORS/CSRF behavior against the deployment origins.
+- [x] Verify protected endpoints reject missing and malformed access tokens; verify a valid token resolves `/api/auth/me` to its internal subject ID.
+- [x] Verify a correctly signed access token with a one-second TTL is rejected after expiry (the test signs it separately; configured auth TTL is unchanged).
+- [ ] Verify an incorrectly signed access token is rejected.
+- [x] Verify local refresh-cookie HttpOnly/SameSite/path attributes and credentialed CORS for `http://localhost:3000`.
+- [ ] Verify production cookie Secure/SameSite and CORS/CSRF settings against deployment origins.
 - [ ] Verify the clean user store, new account ownership behavior, and rollback path.
-- [ ] Run the available type checks, lint, and build commands; record any existing or environment-dependent failures.
+- [x] Run the backend TypeScript build. It passed. Redis was unavailable, so the backend used the in-memory rate-limit fallback during verification.
 
 ## 3) Acceptance Criteria
 
