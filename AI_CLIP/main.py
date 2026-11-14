@@ -12,6 +12,7 @@ import time
 MODEL_PATH = "clip_vision_512.onnx"
 TEXT_EMB_PATH = "vibe_embeddings.npy"
 KEYWORDS_PATH = "vibe_keywords.npy"
+CLIP_PROCESSOR_PATH = os.getenv("CLIP_PROCESSOR_PATH", "openai/clip-vit-base-patch32")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 25_000_000
 
@@ -115,15 +116,19 @@ async def extract(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Invalid image")
     decode_ms = (time.perf_counter() - decode_started) * 1000
 
-    result = await run_in_threadpool(infer_vibes, image)
+    result = await run_in_threadpool(infer_vibes, image, len(contents), request_started, memory_before_mb, decode_ms)
     return result
 
 
-def infer_vibes(image: Image.Image):
+def infer_vibes(image: Image.Image, input_bytes: int, request_started: float, memory_before_mb: float, decode_ms: float):
     if session is None or text_matrix is None or keywords is None:
         raise HTTPException(status_code=503, detail="Image model is not ready")
 
+    process = psutil.Process(os.getpid())
+    preprocess_started = time.perf_counter()
     inputs = processor(images=image, return_tensors="np")
+    preprocess_ms = (time.perf_counter() - preprocess_started) * 1000
+    inference_started = time.perf_counter()
     image_emb = session.run(
         ["image_embeddings"],
         {"pixel_values": inputs["pixel_values"]}
@@ -131,6 +136,7 @@ def infer_vibes(image: Image.Image):
     inference_ms = (time.perf_counter() - inference_started) * 1000
 
     # cosine similarity (already normalized)
+    ranking_started = time.perf_counter()
     norm = np.linalg.norm(image_emb, axis=1, keepdims=True)
     if not np.isfinite(norm).all() or np.any(norm == 0):
         raise HTTPException(status_code=500, detail="Image embedding could not be calculated")
@@ -161,7 +167,7 @@ def infer_vibes(image: Image.Image):
         "top_keywords": top_keywords,
         "telemetry": {
             "model_state": "warm",
-            "input_bytes": len(contents),
+            "input_bytes": input_bytes,
             "timing_ms": {
                 "decode": round(decode_ms, 3),
                 "preprocess": round(preprocess_ms, 3),

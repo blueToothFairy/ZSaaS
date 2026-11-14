@@ -7,6 +7,8 @@ import IAIVibeScanner from "./interfaces/ai-scanner.interface.js";
 import ISongSearch from "../song/interfaces/song-search.interface.js";
 import AIRepository from "./interfaces/ai-output-repo.interface.js";
 import db from '../../shared/db/knexClient.js';
+import MusicTasteRepository from '../profile/repositories/music-taste.knex.js';
+import MusicTasteService from '../profile/services/music-taste.service.js';
 
 // CLIP URL may not be available in all environments (e.g. tests or local dev).
 // We don't want the entire backend to crash on import; requests that rely on
@@ -19,8 +21,9 @@ import db from '../../shared/db/knexClient.js';
 const clipService: IAIVibeScanner = new CLIPService();
 const iTunesSearchService: ISongSearch = new ITunesSearchService();
 const aiRepo: AIRepository = new KnexAIOutputsRepository(db);
+const musicTasteService = new MusicTasteService(new MusicTasteRepository(db));
 
-const vibeScannerService = new VibeScannerService(clipService, iTunesSearchService, aiRepo);
+const vibeScannerService = new VibeScannerService(clipService, iTunesSearchService, aiRepo, musicTasteService);
 
 const vibeController = new VibeScannerController(vibeScannerService);
 

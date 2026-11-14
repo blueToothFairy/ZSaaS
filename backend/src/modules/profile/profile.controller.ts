@@ -2,11 +2,41 @@ import { Response } from "express";
 import AuthenticatedRequest from "../../shared/types/AuthenticatedRequest.js";
 import FavoritesService from "./services/favorites.service.js";
 import { CreateFavoriteDTO } from "./dto/favorite.dto.js";
+import MusicTasteService, { MusicTasteValidationError } from "./services/music-taste.service.js";
+import { UpdateMusicTasteDTO } from "./dto/music-taste.dto.js";
 
 export class ProfileController {
   constructor(
-    private readonly favoritesService: FavoritesService
+    private readonly favoritesService: FavoritesService,
+    private readonly musicTasteService: MusicTasteService
   ) {}
+
+  async getMusicTaste(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) { res.status(401).json({ success: false, message: "Unauthorized" }); return; }
+    try {
+      res.status(200).json({ success: true, data: await this.musicTasteService.getProfile(userId) });
+    } catch (error) {
+      console.error("getMusicTaste error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch music taste" });
+    }
+  }
+
+  async updateMusicTaste(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) { res.status(401).json({ success: false, message: "Unauthorized" }); return; }
+    try {
+      const profile = await this.musicTasteService.replaceProfile(userId, req.body as UpdateMusicTasteDTO);
+      res.status(200).json({ success: true, data: profile });
+    } catch (error) {
+      if (error instanceof MusicTasteValidationError) {
+        res.status(400).json({ success: false, message: error.message });
+        return;
+      }
+      console.error("updateMusicTaste error:", error);
+      res.status(500).json({ success: false, message: "Failed to update music taste" });
+    }
+  }
 
   async getFavorites(req: AuthenticatedRequest, res: Response) {
     try {

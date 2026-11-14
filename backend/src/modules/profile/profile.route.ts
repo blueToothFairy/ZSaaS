@@ -6,6 +6,9 @@ import { createAuthenticatedLimiter } from '../../shared/middleware/rateLimiting
 const profileRouter = Router();
 profileRouter.use(requireAccessToken, createAuthenticatedLimiter());
 
+profileRouter.get("/music-taste", (req: Request, res: Response) => profileController.getMusicTaste(req as any, res));
+profileRouter.put("/music-taste", (req: Request, res: Response) => profileController.updateMusicTaste(req as any, res));
+
 // Get all favorites
 profileRouter.get(
   "/favorites",

@@ -8,6 +8,8 @@ export interface Song {
   externalUrl?: string;
   duration?: number;
   releaseDate?: string;
+  artistId?: string;
+  primaryGenreName?: string;
 }
 
 export interface SearchResult {
@@ -19,6 +21,22 @@ export interface SearchResult {
 export interface SearchResultWithCandidates {
   result: SearchResult;
   candidates: Song[];
+}
+
+export type RecommendationQueryGroup = "context" | "taste" | "hybrid";
+
+export interface RecommendationQuery {
+  query: string;
+  groups: RecommendationQueryGroup[];
+}
+
+export interface RetrievedCandidate {
+  track: Song;
+  provenance: Array<{
+    query: string;
+    groups: RecommendationQueryGroup[];
+    sourceCountry?: string;
+  }>;
 }
 
 export default interface ISongSearch {

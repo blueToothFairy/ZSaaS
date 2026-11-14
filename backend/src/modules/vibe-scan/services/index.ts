@@ -31,10 +31,14 @@ export default class VibeScannerService {
   constructor(
     private readonly vibeService: IAIVibeScanner,
     private readonly songSearch: ISongSearch,
-    private readonly aiRepo: AIRepository
+    private readonly aiRepo: AIRepository,
+    private readonly musicTasteService: MusicTasteService,
+    private readonly queryService: RecommendationQueryService = new RecommendationQueryService(),
+    private readonly rankingService: RankingService = new RankingService()
   ) { }
 
   async getVibeMatchingSongs(
+    userId: string,
     buffer: Buffer,
     originalName: string,
     mimeType: string,

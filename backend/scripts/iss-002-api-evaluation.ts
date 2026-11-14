@@ -12,6 +12,7 @@ interface EvaluationScenario {
   favoriteArtists: string[];
   platform: string;
   contentType: string;
+  image?: { path: string; description: string; sourceUrl: string; photographer?: string };
 }
 interface Dataset { version: string; scenarios: EvaluationScenario[]; }
 interface ApiSong { id?: string; title?: string; artist?: string; primaryGenreName?: string; score?: number; }
@@ -27,13 +28,19 @@ const datasetPath = resolve(process.env.ISS002_DATASET_PATH ?? "src/modules/vibe
 const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 const outputPath = resolve(process.env.ISS002_EVALUATION_OUTPUT ?? `artifacts/iss-002-api-evaluation-${timestamp}.json`);
 
-if (!token || !evaluationKey || !imagePath || !allowProfileMutation) {
-  throw new Error("Set ISS002_BEARER_TOKEN, ISS002_EVALUATION_KEY, ISS002_IMAGE_PATH, and ISS002_ALLOW_TEST_PROFILE_MUTATION=true for a dedicated test account before running the API evaluation.");
+if (!token || !evaluationKey || !allowProfileMutation) {
+  throw new Error("Set ISS002_BEARER_TOKEN, ISS002_EVALUATION_KEY, and ISS002_ALLOW_TEST_PROFILE_MUTATION=true for a dedicated test account before running the API evaluation.");
 }
 
-const [datasetText, image] = await Promise.all([readFile(datasetPath, "utf8"), readFile(resolve(imagePath))]);
+const datasetText = await readFile(datasetPath, "utf8");
 const dataset = JSON.parse(datasetText) as Dataset;
-const imageSha256 = createHash("sha256").update(image).digest("hex");
+const images = new Map<string, { bytes: Buffer; sha256: string }>();
+for (const scenario of dataset.scenarios) {
+  const scenarioImagePath = scenario.image?.path ?? imagePath;
+  if (!scenarioImagePath) throw new Error(`Scenario ${scenario.id} needs image.path or ISS002_IMAGE_PATH.`);
+  const bytes = await readFile(resolve(scenarioImagePath));
+  images.set(scenario.id, { bytes, sha256: createHash("sha256").update(bytes).digest("hex") });
+}
 
 async function requestJson(url: string, init: RequestInit): Promise<{ status: number; body: ApiResponse }> {
   const response = await fetch(url, init);
@@ -42,9 +49,9 @@ async function requestJson(url: string, init: RequestInit): Promise<{ status: nu
   return { status: response.status, body };
 }
 
-async function runFlow(mode: "baseline" | "personalized", scenario: EvaluationScenario): Promise<{ response: ApiResponse; durationMs: number }> {
+async function runFlow(mode: "baseline" | "personalized", scenario: EvaluationScenario, image: Buffer): Promise<{ response: ApiResponse; durationMs: number }> {
   const form = new FormData();
-  form.append("file", new Blob([image], { type: "image/jpeg" }), "iss-002-evaluation.jpg");
+  form.append("file", new Blob([new Uint8Array(image)], { type: "image/jpeg" }), "iss-002-evaluation.jpg");
   form.append("platform", scenario.platform);
   form.append("contentType", scenario.contentType);
   const startedAt = performance.now();
@@ -134,11 +141,13 @@ try {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ preferences, preferredLanguages: [], vocalPreference: "any" }),
     });
-    const baseline = await runFlow("baseline", scenario);
-    const personalized = await runFlow("personalized", scenario);
+    const scenarioImage = images.get(scenario.id);
+    if (!scenarioImage) throw new Error(`Image bytes missing for scenario ${scenario.id}.`);
+    const baseline = await runFlow("baseline", scenario, scenarioImage.bytes);
+    const personalized = await runFlow("personalized", scenario, scenarioImage.bytes);
     runs.push({
       scenarioId: scenario.id,
-      inputs: { mood: scenario.mood, contextGenres: scenario.contextGenres, tasteGenres: scenario.tasteGenres, dislikedGenres: scenario.dislikedGenres, favoriteArtists: scenario.favoriteArtists, platform: scenario.platform, contentType: scenario.contentType, imageSha256 },
+      inputs: { mood: scenario.mood, contextGenres: scenario.contextGenres, tasteGenres: scenario.tasteGenres, dislikedGenres: scenario.dislikedGenres, favoriteArtists: scenario.favoriteArtists, platform: scenario.platform, contentType: scenario.contentType, image: { description: scenario.image?.description ?? "Image path supplied outside the scenario dataset.", sourceUrl: scenario.image?.sourceUrl ?? null, photographer: scenario.image?.photographer ?? null, sha256: scenarioImage.sha256 } },
       baseline: { durationMs: baseline.durationMs, metrics: scoreSongs(baseline.response.songs ?? [], scenario, getCandidatePool(baseline.response)), evaluation: baseline.response.evaluation },
       personalized: { durationMs: personalized.durationMs, metrics: scoreSongs(personalized.response.songs ?? [], scenario, getCandidatePool(personalized.response)), evaluation: personalized.response.evaluation },
     });
@@ -157,7 +166,7 @@ const output = {
   datasetVersion: dataset.version,
   createdAt: new Date().toISOString(),
   apiBase,
-  imageSha256,
+  images: runs.map((run) => ({ scenarioId: run.scenarioId, ...run.inputs.image })),
   scenarioCount: runs.length,
   summaries: Object.fromEntries(["baseline", "personalized"].map((mode) => {
     const metrics = runs.map((run) => run[mode].metrics);

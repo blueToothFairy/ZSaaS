@@ -12,6 +12,8 @@ interface ITunesResult {
   trackTimeMillis?: number;
   releaseDate?: string;
   trackId: number;
+  artistId?: number;
+  primaryGenreName?: string;
 }
 
 interface ITunesResponse {
@@ -370,6 +372,9 @@ export default class ITunesSearchService implements ISongSearch {
           album: result.collectionName,
           artwork: result.artworkUrl100?.replace(/100x100/, "200x200") || "",
         };
+
+        if (result.artistId !== undefined) song.artistId = String(result.artistId);
+        if (result.primaryGenreName) song.primaryGenreName = result.primaryGenreName;
 
         if (result.previewUrl) {
           song.previewUrl = result.previewUrl;
