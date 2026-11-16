@@ -1,0 +1,45 @@
+.page {
+  --paper: #f4efe5;
+  --paper-high: #fffaf0;
+  --ink: #101014;
+  --muted: #62616a;
+  --acid: #d4ff00;
+  --blue: #3155e7;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 18px 40px;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: radial-gradient(rgba(16,16,20,.12) .65px, transparent .65px);
+  background-size: 7px 7px;
+}
+.header { width: min(1000px, 100%); margin: 0 auto 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 20px; font-weight: 900; letter-spacing: -.07em; }
+.brand img { width: 34px; height: 34px; object-fit: contain; }
+.headerMark { color: var(--blue); font: 9px var(--font-geist-mono), monospace; letter-spacing: .12em; text-transform: uppercase; }
+.layout { flex: 1; display: grid; place-items: center; padding-bottom: 36px; }
+.panel { position: relative; width: min(100%, 500px); padding: clamp(24px, 5vw, 42px); overflow: hidden; border: 2px solid var(--ink); background: var(--paper-high); box-shadow: 8px 8px 0 var(--blue); }
+.panel::before { content: ""; position: absolute; width: 150px; height: 150px; right: -94px; top: -96px; border: 18px solid var(--acid); border-radius: 50%; box-shadow: 0 0 0 9px var(--ink); pointer-events: none; }
+.back { display: inline-flex; align-items: center; gap: 7px; color: var(--blue); font-size: 12px; font-weight: 800; text-decoration: none; }
+.back:hover { text-decoration: underline; text-underline-offset: 3px; }
+.eyebrow { margin: 30px 0 10px; color: var(--blue); font: 10px var(--font-geist-mono), monospace; letter-spacing: .14em; text-transform: uppercase; }
+.title { margin: 0; font-size: clamp(32px, 6vw, 44px); line-height: .98; letter-spacing: -.065em; font-weight: 900; }
+.description { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.error { margin-top: 18px; padding: 12px 14px; border: 1.5px solid #9d2633; background: #fce6e8; color: #7d1722; font-size: 13px; line-height: 1.45; }
+.providerButton { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; margin-top: 22px; padding: 10px 14px; border: 1.5px solid var(--ink); color: var(--ink); background: white; font-size: 13px; font-weight: 750; text-decoration: none; transition: background .18s, transform .18s, box-shadow .18s; }
+.providerButton:hover { background: #e5e9ff; transform: translateY(-1px); box-shadow: 3px 3px 0 var(--ink); }
+.divider { display: flex; align-items: center; gap: 12px; margin: 21px 0; color: var(--muted); font: 9px var(--font-geist-mono), monospace; letter-spacing: .1em; }
+.divider::before,.divider::after { content: ""; height: 1px; flex: 1; background: rgba(16,16,20,.22); }
+.form { display: grid; gap: 14px; }
+.field { display: grid; gap: 6px; color: var(--ink); font-size: 12px; font-weight: 750; }
+.input { width: 100%; height: 44px; padding: 0 12px; border: 1.5px solid rgba(16,16,20,.42); border-radius: 0; color: var(--ink); background: #e8edff; outline: none; font-size: 14px; }
+.input::placeholder { color: #5f6680; }
+.input:focus { border-color: var(--blue); box-shadow: 3px 3px 0 var(--acid); }
+.hint { color: var(--muted); font-size: 11px; font-weight: 450; }
+.submit { width: 100%; min-height: 48px; margin-top: 4px; border: 2px solid var(--ink); color: var(--ink); background: var(--acid); box-shadow: 4px 4px 0 var(--ink); font-size: 14px; font-weight: 850; cursor: pointer; transition: transform .18s, box-shadow .18s; }
+.submit:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--blue); }
+.submit:disabled { cursor: wait; opacity: .65; }
+.footer { margin: 22px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+.footer a { color: var(--blue); font-weight: 800; text-underline-offset: 3px; }
+.page :global(button:focus-visible),.page :global(a:focus-visible),.page :global(input:focus-visible) { outline: 3px solid var(--blue); outline-offset: 3px; }
