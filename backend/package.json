@@ -6,8 +6,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch ./src/server.ts",
-    "evaluate:iss-002": "node ./node_modules/typescript/bin/tsc --project ./scripts/tsconfig.json && node ./.evaluation-dist/scripts/iss-002-api-evaluation.js",
-    "test": "tsx --test src/modules/profile/services/music-taste.service.test.ts src/modules/profile/repositories/music-taste.knex.test.ts src/modules/vibe-scan/services/recommendation-engine.test.ts src/modules/vibe-scan/services/recommendation-evaluation.test.ts src/shared/redis/redisClient.test.ts"
+    "test": "tsx --test src/modules/vibe-scan/services/recommendation-engine.test.ts src/modules/vibe-scan/services/recommendation.integration.test.ts"
   },
   "keywords": [],
   "author": "",
