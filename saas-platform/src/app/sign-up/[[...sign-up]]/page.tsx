@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppAuth } from '../../auth-provider';
 
@@ -13,10 +13,11 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (isLoaded && user) router.replace('/home'); }, [isLoaded, user, router]);
+  const registrationStarted = useRef(false);
+  useEffect(() => { if (isLoaded && user && !registrationStarted.current) router.replace('/home'); }, [isLoaded, user, router]);
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setBusy(true);
-    try { await register(email, password, name); router.replace('/home'); }
+    try { registrationStarted.current = true; const isNewUser = await register(email, password, name); router.replace(isNewUser ? '/onboarding/music-taste' : '/home'); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not create account.'); }
     finally { setBusy(false); }
   };

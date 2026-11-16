@@ -3,11 +3,11 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 export interface AuthUser { id: string; email: string; name: string | null; }
-interface AuthResult { success: boolean; accessToken: string; user: AuthUser; message?: string; code?: string; }
+interface AuthResult { success: boolean; accessToken: string; user: AuthUser; isNewUser?: boolean; message?: string; code?: string; }
 interface AuthContextValue {
   user: AuthUser | null; isLoaded: boolean; getToken: () => Promise<string | null>;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<boolean>;
   logout: () => Promise<void>; addPassword: (password: string) => Promise<void>; linkGoogle: () => Promise<void>;
 }
 
@@ -59,9 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!response.ok) throw new Error(result?.message || `Authentication failed (HTTP ${response.status}).`);
     if (!result?.accessToken || !result.user) throw new Error('The server returned an incomplete sign-in response. Please try again.');
     startupPromise = Promise.resolve(result); syncSession(result);
+    return result;
   };
-  const login = (email: string, password: string) => submit('login', { email, password });
-  const register = (email: string, password: string, name?: string) => submit('register', { email, password, ...(name ? { name } : {}) });
+  const login = async (email: string, password: string) => { await submit('login', { email, password }); };
+  const register = async (email: string, password: string, name?: string) => {
+    const result = await submit('register', { email, password, ...(name ? { name } : {}) });
+    return result?.isNewUser === true;
+  };
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => undefined);
     cachedToken = null; cachedUser = null; authReady = true; startupPromise = Promise.resolve(null); setUser(null); setIsLoaded(true);

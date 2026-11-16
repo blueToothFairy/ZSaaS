@@ -191,7 +191,7 @@ export default class AuthService {
       if (!user) throw new AuthError(401, 'Account is unavailable.');
       const rawRefresh = randomBytes(48).toString('base64url');
       await this.authRepository.createRefreshSession(user.id, this.sessionInput(rawRefresh));
-      return { user, session: { accessToken: signAccessToken(user.id, user.email), refreshToken: rawRefresh } };
+      return { user, session: { accessToken: signAccessToken(user.id, user.email), refreshToken: rawRefresh }, isNewUser: false };
     }
 
     if (await this.authRepository.findAuthUserByEmail(email)) {
@@ -200,7 +200,7 @@ export default class AuthService {
     const user: IAuthUser = { id: randomUUID(), email, name: profile.name || null };
     const rawRefresh = randomBytes(48).toString('base64url');
     await this.authRepository.createGoogleAccount(user, profile.sub, email, this.sessionInput(rawRefresh));
-    return { user, session: { accessToken: signAccessToken(user.id, user.email), refreshToken: rawRefresh } };
+    return { user, session: { accessToken: signAccessToken(user.id, user.email), refreshToken: rawRefresh }, isNewUser: true };
   }
 }
 

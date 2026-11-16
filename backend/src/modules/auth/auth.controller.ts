@@ -30,7 +30,7 @@ export default class AuthController {
       }
       const result = await this.authService.register({ email, password, ...(typeof name === 'string' ? { name } : {}) } satisfies RegisterDTO);
       res.cookie(authCookies.refresh, result.refreshToken, cookieOptions(refreshCookieMaxAgeMs));
-      res.status(201).json({ success: true, accessToken: result.accessToken, user: result.user });
+      res.status(201).json({ success: true, accessToken: result.accessToken, user: result.user, isNewUser: true });
     } catch (error) { this.handleError(error, res); }
   };
 
@@ -102,7 +102,7 @@ export default class AuthController {
       res.clearCookie(authCookies.oauth, { ...cookieOptions(), path: '/api/auth/google' });
       if ('linked' in result) { res.redirect(`${frontendUrl()}/home?googleLinked=1`); return; }
       res.cookie(authCookies.refresh, result.session.refreshToken, cookieOptions(refreshCookieMaxAgeMs));
-      res.redirect(`${frontendUrl()}/home`);
+      res.redirect(`${frontendUrl()}${result.isNewUser ? '/onboarding/music-taste' : '/home'}`);
     } catch (error) {
       res.clearCookie(authCookies.oauth, { ...cookieOptions(), path: '/api/auth/google' });
       const code = error instanceof AuthError ? error.code || 'google_failed' : 'google_failed';
