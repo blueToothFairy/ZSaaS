@@ -6,7 +6,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch ./src/server.ts",
-    "test": "tsx --test src/modules/vibe-scan/services/recommendation-engine.test.ts src/modules/vibe-scan/services/recommendation.integration.test.ts"
+    "test": "tsx --test src/modules/auth/auth.service.test.ts src/modules/auth/auth.integration.test.ts src/modules/vibe-scan/services/recommendation-engine.test.ts src/modules/vibe-scan/services/recommendation.integration.test.ts"
   },
   "keywords": [],
   "author": "",

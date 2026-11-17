@@ -8,6 +8,7 @@ const scrypt = promisify(scryptCallback);
 const REFRESH_COOKIE = 'vt_refresh';
 const OAUTH_COOKIE = 'vt_oauth_state';
 const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 30);
+const PASSWORD_RESET_TTL_MINUTES = 30;
 export const refreshCookieMaxAgeMs = REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000;
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -139,6 +140,61 @@ export default class AuthService {
     if (!(await this.authRepository.findAuthUserById(userId))) throw new AuthError(401, 'Please sign in again.');
     const result = await this.authRepository.addPassword(userId, await this.createPasswordHash(password));
     if (result === 'exists') throw new AuthError(409, 'This account already has a password.');
+  }
+
+  async requestPasswordReset(emailInput: string): Promise<void> {
+    const email = normalizeEmail(emailInput);
+    if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 320) return;
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const configuredFrontendUrl = process.env.FRONTEND_URL;
+    if (!apiKey || !configuredFrontendUrl) {
+      console.error('Password recovery email is not configured: RESEND_API_KEY and FRONTEND_URL are required.');
+      return;
+    }
+
+    let resetUrl: URL;
+    try {
+      resetUrl = new URL('/reset-password', configuredFrontendUrl);
+      if (resetUrl.protocol !== 'https:' && process.env.NODE_ENV === 'production') throw new Error('Production frontend URL must use HTTPS.');
+    } catch {
+      console.error('Password recovery email is not configured: FRONTEND_URL must be a valid absolute URL.');
+      return;
+    }
+
+    const user = await this.authRepository.findAuthUserByEmail(email);
+    if (!user || !(await this.authRepository.getAuthMethods(user.id)).password) return;
+
+    const rawToken = randomBytes(32).toString('base64url');
+    await this.authRepository.createPasswordResetToken(user.id, hashToken(rawToken), new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000));
+    resetUrl.searchParams.set('token', rawToken);
+
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(10_000),
+        body: JSON.stringify({
+          from: 'VibeTune <onboarding@resend.dev>',
+          to: [user.email],
+          subject: 'Reset your VibeTune password',
+          text: `We received a request to reset your VibeTune password. This link expires in ${PASSWORD_RESET_TTL_MINUTES} minutes: ${resetUrl.toString()}\n\nIf you did not request this, you can ignore this email.`,
+          html: `<p>We received a request to reset your VibeTune password.</p><p><a href="${resetUrl.toString()}">Reset your password</a></p><p>This link expires in ${PASSWORD_RESET_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.</p>`,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Password recovery email delivery failed with HTTP status:', response.status);
+      }
+    } catch (error) {
+      console.error('Password recovery email delivery failed:', error);
+    }
+  }
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    if (password.length < 10 || password.length > 128) throw new AuthError(400, 'Password must be between 10 and 128 characters.');
+    if (!/^[A-Za-z0-9_-]{40,}$/.test(token) || token.length > 200) throw new AuthError(400, 'This reset link is invalid or has expired. Request a new one.');
+    const updated = await this.authRepository.resetPassword(hashToken(token), await this.createPasswordHash(password));
+    if (!updated) throw new AuthError(400, 'This reset link is invalid or has expired. Request a new one.');
   }
 
   createOAuthStart(purpose: 'login' | 'link', userId?: string): { url: string; cookie: string } {

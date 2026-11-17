@@ -52,6 +52,7 @@ export default function SignInPage() {
             <label className={styles.field}>Password<input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className={styles.input} /></label>
             <button disabled={busy} className={styles.submit}>{busy ? 'Signing in…' : 'Sign in'}</button>
           </form>
+          <p className={styles.footer}><Link href="/forgot-password">Forgot password?</Link></p>
           <p className={styles.footer}>New to VibeTune? <Link href="/sign-up">Create an account</Link></p>
         </section>
       </div>

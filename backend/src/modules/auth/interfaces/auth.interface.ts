@@ -13,6 +13,8 @@ export interface IAuthRepository {
   rotateRefreshSession(tokenHash: string, replacement: RefreshSessionInput): Promise<{ kind: 'ok'; user: IAuthUser } | { kind: 'expired' }>;
   revokeRefreshSession(tokenHash: string): Promise<void>;
   addPassword(userId: string, passwordHash: string): Promise<'added' | 'exists'>;
+  createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
+  resetPassword(tokenHash: string, passwordHash: string): Promise<boolean>;
   findGoogleIdentity(subject: string): Promise<{ userId: string } | undefined>;
   createGoogleAccount(user: IAuthUser, subject: string, email: string, refresh: RefreshSessionInput): Promise<void>;
   linkGoogleIdentity(userId: string, subject: string, email: string): Promise<'linked' | 'already-linked' | 'identity-conflict' | 'email-conflict' | 'missing-user'>;
