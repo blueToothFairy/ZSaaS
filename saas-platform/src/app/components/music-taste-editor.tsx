@@ -3,6 +3,7 @@
 import { Children, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
+import styles from './music-taste-editor.module.css';
 
 type TasteType = 'genre' | 'artist' | 'track';
 type TasteSentiment = 'preferred' | 'disliked';
@@ -15,9 +16,6 @@ interface MusicTasteResponse { success: boolean; data: MusicTasteData; }
 interface SearchResponse { success?: boolean; data?: Song[] | { songs?: Song[]; results?: Song[]; tracks?: Song[] }; }
 
 const LANGUAGES = ['Arabic', 'Bengali', 'Chinese', 'Dutch', 'English', 'French', 'German', 'Hindi', 'Indonesian', 'Italian', 'Japanese', 'Korean', 'Portuguese', 'Punjabi', 'Russian', 'Spanish', 'Thai', 'Turkish', 'Vietnamese'];
-const fieldClass = 'w-full rounded-xl border border-white/15 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-sky-300/60 focus:ring-2 focus:ring-sky-300/15';
-const buttonClass = 'inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:border-white/25 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50';
-
 export default function MusicTasteEditor({ getToken, mode = 'profile', onComplete, onSkip }: { getToken: () => Promise<string | null>; mode?: 'profile' | 'wizard'; onComplete?: () => void; onSkip?: () => void }) {
   const [preferences, setPreferences] = useState<TastePreference[]>([]);
   const [genres, setGenres] = useState<MusicGenreOption[]>([]);
@@ -40,6 +38,8 @@ export default function MusicTasteEditor({ getToken, mode = 'profile', onComplet
   const [message, setMessage] = useState('');
   const [step, setStep] = useState(0);
   const isWizard = mode === 'wizard';
+  const fieldClass = `w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 ${isWizard ? 'border-black/35 bg-white text-[#101014] placeholder:text-[#62616a] focus:border-[#3155e7] focus:ring-[#3155e7]/15' : 'border-white/15 bg-slate-950/50 text-white placeholder:text-white/40 focus:border-sky-300/60 focus:ring-sky-300/15'}`;
+  const buttonClass = `inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${isWizard ? 'border-black/35 bg-white text-[#101014] hover:border-[#3155e7] hover:bg-[#e8edff]' : 'border-white/15 bg-white/10 text-white hover:border-white/25 hover:bg-white/15'}`;
 
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
@@ -183,10 +183,10 @@ export default function MusicTasteEditor({ getToken, mode = 'profile', onComplet
   </>;
   const controlSections = Children.toArray(mainControls.props.children);
 
-  if (isLoading) return <div className="flex items-center gap-3 py-10 text-sm text-white/65"><Loader2 className="h-5 w-5 animate-spin" />Loading your music taste...</div>;
-  if (loadError) return <div className="space-y-3 rounded-xl border border-rose-200/15 bg-rose-200/5 p-4"><p role="alert" className="text-sm text-rose-50">{message}</p><button type="button" onClick={() => void loadProfile()} className={buttonClass}>Retry</button></div>;
+  if (isLoading) return <div className={`${isWizard ? styles.wizard : ''} flex items-center gap-3 py-10 text-sm text-white/65`}><Loader2 className="h-5 w-5 animate-spin" />Loading your music taste...</div>;
+  if (loadError) return <div className={`${isWizard ? styles.wizard : ''} space-y-3 rounded-xl border border-rose-200/15 bg-rose-200/5 p-4`}><p role="alert" className="text-sm text-rose-50">{message}</p><button type="button" onClick={() => void loadProfile()} className={buttonClass}>Retry</button></div>;
 
-  return <form onSubmit={handleFormSubmit} className="space-y-5">
+  return <form onSubmit={handleFormSubmit} className={`${isWizard ? styles.wizard : ''} space-y-5`}>
     {isWizard && <div className="space-y-2"><div className="flex justify-between text-xs text-white/55"><span>Step {step + 1} of 2</span><span>{step === 0 ? 'Genres & languages' : 'Artists & tracks'}</span></div><div className="flex gap-2"><span className="h-1.5 flex-1 rounded-full bg-sky-200"/><span className={`h-1.5 flex-1 rounded-full ${step === 1 ? 'bg-sky-200' : 'bg-white/15'}`}/></div></div>}
     {isWizard ? step === 0 ? <>{controlSections[0]}{controlSections[2]}</> : <>{controlSections[1]}{controlSections[3]}</> : mainControls}
     {message && <p role="status" className="rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white/80">{message}</p>}

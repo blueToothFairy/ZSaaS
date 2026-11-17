@@ -23,7 +23,7 @@ Close the sign-up and sign-in usability gaps and make the onboarding wizard visu
 
 ### Task 2 — Implement Password Recovery
 
-- [ ] Configure the Resend API key in deployment secrets. Sender `VibeTune <noreply@mail.vibetune.ai>` is set in code and the key is documented in `backend/.env.example`.
+- [x] Configure the Resend API key. The user confirmed it has been added; its environment file/value was not inspected. Sender `VibeTune <noreply@mail.vibetune.ai>` is set in code.
 - [x] Build reset links from the frontend base URL configured for the active environment.
 - [x] Add an idempotent SQL migration for hashed, expiring, single-use reset tokens.
 - [x] Add a generic recovery request endpoint that does not reveal whether an account exists or uses a password, including through response timing.
@@ -46,12 +46,12 @@ Close the sign-up and sign-in usability gaps and make the onboarding wizard visu
 
 ### Task 4 — Review and Verify
 
-- [ ] Verify auth responses and token lifecycle against a database after applying `mig-004-password-reset.sql` and configuring Resend.
+- [x] Verify the generic recovery response and token lifecycle after applying `mig-004-password-reset.sql`; real email delivery was not smoke-tested to avoid sending email.
 - [x] Verify mismatched confirmation is checked before registration; matching values preserve the current registration flow.
 - [ ] Review wizard and Profile modes at narrow and wide layouts in a browser.
 - [x] Review the final diff for unintended API, data, or account-linking changes.
 
-**Verification note:** Frontend TypeScript and focused backend auth TypeScript checks pass. ESLint reports 0 errors and 1 existing `<img>` warning in the shared Music Taste editor. `git diff --check` passes. Production frontend build reaches the existing Google Fonts fetch and fails because this environment cannot reach `fonts.googleapis.com`. Full backend TypeScript compilation still reports two existing mock errors in `recommendation.integration.test.ts`. The local environment has no `RESEND_API_KEY`, and the database migration has not been applied; live recovery email and database lifecycle verification remain pending those environment steps.
+**Verification note:** `mig-004-password-reset.sql` was applied to the configured PostgreSQL database; the table and its primary-key/user indexes were confirmed. A generated unknown address received HTTP 200 with the generic recovery response, and a well-formed unknown token received HTTP 400. Disposable integration records confirmed reset success, one-time use, expiry rejection, new-password login, refresh-session revocation, and no token issuance for Google-only accounts; the records were removed afterward. Frontend TypeScript and focused backend auth TypeScript checks pass. ESLint reports 0 errors and 1 existing `<img>` warning. `git diff --check` passes. Production frontend build remains blocked by unavailable Google Fonts network access; full backend TypeScript compilation still reports two existing mock errors in `recommendation.integration.test.ts`. Real Resend delivery and browser-based UI review were not performed.
 
 ## 3) Acceptance Criteria
 
