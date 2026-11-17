@@ -122,4 +122,26 @@ export default class AuthController {
       res.status(204).end();
     } catch (error) { this.handleError(error, res); }
   };
+
+  requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
+    const { email } = (req.body || {}) as { email?: unknown };
+    if (typeof email !== 'string' || email.length > 320) {
+      res.status(400).json({ success: false, message: 'Enter a valid email address.' });
+      return;
+    }
+    res.json({ success: true, message: 'If an account with a password exists for that email, a reset link will be sent shortly.' });
+    // Respond before account lookup or email delivery so response timing cannot disclose account existence.
+    void this.authService.requestPasswordReset(email).catch((error: unknown) => {
+      console.error('Password recovery request could not be completed:', error instanceof Error ? error.name : 'Unknown error');
+    });
+  };
+
+  resetPassword = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { token, password } = (req.body || {}) as { token?: unknown; password?: unknown };
+      if (typeof token !== 'string' || typeof password !== 'string') throw new AuthError(400, 'A reset token and new password are required.');
+      await this.authService.resetPassword(token, password);
+      res.json({ success: true, message: 'Your password has been reset. Please sign in.' });
+    } catch (error) { this.handleError(error, res); }
+  };
 }

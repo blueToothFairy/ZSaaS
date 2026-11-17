@@ -14,6 +14,7 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const registrationStarted = useRef(false);
@@ -22,6 +23,7 @@ export default function SignUpPage() {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     setBusy(true);
     try {
       registrationStarted.current = true;
@@ -49,7 +51,8 @@ export default function SignUpPage() {
           <form onSubmit={submit} className={styles.form}>
             <label className={styles.field}>Name <span className={styles.hint}>(optional)</span><input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} className={styles.input} /></label>
             <label className={styles.field}>Email<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className={styles.input} /></label>
-            <label className={styles.field}>Password<input type="password" autoComplete="new-password" minLength={10} required value={password} onChange={(event) => setPassword(event.target.value)} className={styles.input} /><span className={styles.hint}>Use at least 10 characters.</span></label>
+            <label className={styles.field}>Password<input type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} className={styles.input} /><span className={styles.hint}>Use 10 to 128 characters.</span></label>
+            <label className={styles.field}>Confirm password<input type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className={styles.input} /></label>
             <button disabled={busy} className={styles.submit}>{busy ? 'Creating account…' : 'Create account'}</button>
           </form>
           <p className={styles.footer}>Already have an account? <Link href="/sign-in">Sign in</Link></p>

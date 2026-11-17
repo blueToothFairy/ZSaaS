@@ -27,6 +27,8 @@
 .title { margin: 0; font-size: clamp(32px, 6vw, 44px); line-height: .98; letter-spacing: -.065em; font-weight: 900; }
 .description { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
 .error { margin-top: 18px; padding: 12px 14px; border: 1.5px solid #9d2633; background: #fce6e8; color: #7d1722; font-size: 13px; line-height: 1.45; }
+.success { margin-top: 18px; padding: 12px 14px; border: 1.5px solid #3155e7; background: #e8edff; color: #101014; font-size: 13px; line-height: 1.5; }
+.success a,.hint a { color: var(--blue); font-weight: 800; text-underline-offset: 3px; }
 .providerButton { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; margin-top: 22px; padding: 10px 14px; border: 1.5px solid var(--ink); color: var(--ink); background: white; font-size: 13px; font-weight: 750; text-decoration: none; transition: background .18s, transform .18s, box-shadow .18s; }
 .providerButton:hover { background: #e5e9ff; transform: translateY(-1px); box-shadow: 3px 3px 0 var(--ink); }
 .divider { display: flex; align-items: center; gap: 12px; margin: 21px 0; color: var(--muted); font: 9px var(--font-geist-mono), monospace; letter-spacing: .1em; }

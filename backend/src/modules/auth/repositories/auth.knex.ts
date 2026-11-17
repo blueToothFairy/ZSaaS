@@ -90,6 +90,34 @@ export default class AuthRepository implements IAuthRepository {
     });
   }
 
+  async createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    await this.db.transaction(async (trx) => {
+      const user = await trx('user_profiles').where({ id: userId }).forUpdate().first('id');
+      if (!user) return;
+      await trx('password_reset_tokens').where({ user_id: userId }).whereNull('consumed_at').update({ consumed_at: new Date() });
+      await trx('password_reset_tokens').insert({ user_id: userId, token_hash: tokenHash, expires_at: expiresAt });
+    });
+  }
+
+  async resetPassword(tokenHash: string, passwordHash: string): Promise<boolean> {
+    return this.db.transaction(async (trx) => {
+      const resetToken = await trx('password_reset_tokens').where({ token_hash: tokenHash }).whereNull('consumed_at').forUpdate().first();
+      if (!resetToken || new Date(resetToken.expires_at).getTime() <= Date.now()) return false;
+
+      const credential = await trx('password_credentials').where({ user_id: resetToken.user_id }).forUpdate().first('user_id');
+      if (!credential) {
+        await trx('password_reset_tokens').where({ user_id: resetToken.user_id }).whereNull('consumed_at').update({ consumed_at: new Date() });
+        return false;
+      }
+
+      const now = new Date();
+      await trx('password_credentials').where({ user_id: resetToken.user_id }).update({ password_hash: passwordHash, updated_at: now });
+      await trx('password_reset_tokens').where({ user_id: resetToken.user_id }).whereNull('consumed_at').update({ consumed_at: now });
+      await trx('refresh_sessions').where({ user_id: resetToken.user_id }).whereNull('revoked_at').update({ revoked_at: now });
+      return true;
+    });
+  }
+
   async findGoogleIdentity(subject: string): Promise<{ userId: string } | undefined> {
     const identity = await this.db('oauth_identities').where({ provider: 'google', provider_subject: subject }).first('user_id');
     return identity ? { userId: identity.user_id as string } : undefined;
