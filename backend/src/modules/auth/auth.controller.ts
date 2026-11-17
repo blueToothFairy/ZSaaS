@@ -1,12 +1,16 @@
 import { Request, Response } from 'express';
 import AuthenticatedRequest from '../../shared/types/AuthenticatedRequest.js';
-import { LoginDTO, PasswordLinkDTO, RegisterDTO } from './dto/auth.dto.js';
+import { AuthUserDTO, LoginDTO, PasswordLinkDTO, RegisterDTO } from './dto/auth.dto.js';
 import AuthService, { AuthError, authCookies, cookieOptions, getCookie, refreshCookieMaxAgeMs } from './auth.service.js';
 
 const frontendUrl = (): string => process.env.FRONTEND_URL || 'http://localhost:3000';
 
 export default class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private async userWithAuthMethods(user: AuthUserDTO) {
+    return { ...user, authMethods: await this.authService.getAuthMethods(user.id) };
+  }
 
   private handleError(error: unknown, res: Response): void {
     if (error instanceof AuthError) {
@@ -30,7 +34,7 @@ export default class AuthController {
       }
       const result = await this.authService.register({ email, password, ...(typeof name === 'string' ? { name } : {}) } satisfies RegisterDTO);
       res.cookie(authCookies.refresh, result.refreshToken, cookieOptions(refreshCookieMaxAgeMs));
-      res.status(201).json({ success: true, accessToken: result.accessToken, user: result.user, isNewUser: true });
+      res.status(201).json({ success: true, accessToken: result.accessToken, user: await this.userWithAuthMethods(result.user), isNewUser: true });
     } catch (error) { this.handleError(error, res); }
   };
 
@@ -43,7 +47,7 @@ export default class AuthController {
       }
       const result = await this.authService.login({ email, password } satisfies LoginDTO);
       res.cookie(authCookies.refresh, result.refreshToken, cookieOptions(refreshCookieMaxAgeMs));
-      res.json({ success: true, accessToken: result.accessToken, user: result.user });
+      res.json({ success: true, accessToken: result.accessToken, user: await this.userWithAuthMethods(result.user) });
     } catch (error) { this.handleError(error, res); }
   };
 
@@ -51,7 +55,7 @@ export default class AuthController {
     try {
       const result = await this.authService.refresh(getCookie(req.headers.cookie, authCookies.refresh));
       res.cookie(authCookies.refresh, result.refreshToken, cookieOptions(refreshCookieMaxAgeMs));
-      res.json({ success: true, accessToken: result.accessToken, user: result.user });
+      res.json({ success: true, accessToken: result.accessToken, user: await this.userWithAuthMethods(result.user) });
     } catch (error) {
       if (error instanceof AuthError) res.clearCookie(authCookies.refresh, cookieOptions());
       this.handleError(error, res);
@@ -70,7 +74,7 @@ export default class AuthController {
     try {
       const user = await this.authService.getUser((req as AuthenticatedRequest).userId || '');
       if (!user) { res.status(404).json({ success: false, message: 'User not found.' }); return; }
-      res.json({ success: true, user });
+      res.json({ success: true, user: await this.userWithAuthMethods(user) });
     } catch (error) { this.handleError(error, res); }
   };
 

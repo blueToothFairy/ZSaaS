@@ -1,11 +1,12 @@
 import { Knex } from 'knex';
-import { AuthUserDTO } from '../dto/auth.dto.js';
+import { AuthMethodsDTO, AuthUserDTO } from '../dto/auth.dto.js';
 
 export type IAuthUser = AuthUserDTO;
 
 export interface IAuthRepository {
   findAuthUserByEmail(email: string, executor?: Knex | Knex.Transaction): Promise<IAuthUser | undefined>;
   findAuthUserById(userId: string, executor?: Knex | Knex.Transaction): Promise<IAuthUser | undefined>;
+  getAuthMethods(userId: string): Promise<AuthMethodsDTO>;
   findPasswordHash(userId: string): Promise<string | undefined>;
   createPasswordAccount(user: IAuthUser, passwordHash: string, refresh: RefreshSessionInput): Promise<void>;
   createRefreshSession(userId: string, refresh: RefreshSessionInput): Promise<void>;

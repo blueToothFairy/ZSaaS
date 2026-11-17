@@ -17,6 +17,12 @@ export interface AuthUserDTO {
   id: string;
   email: string;
   name: string | null;
+  authMethods?: AuthMethodsDTO;
+}
+
+export interface AuthMethodsDTO {
+  password: boolean;
+  google: boolean;
 }
 
 export interface AuthSessionDTO {
