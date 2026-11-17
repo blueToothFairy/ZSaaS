@@ -8,6 +8,7 @@ interface ProfileTabProps {
   displayName: string;
   email: string;
   favoriteCount: number;
+  authMethods?: { password: boolean; google: boolean };
   getToken: () => Promise<string | null>;
   linkGoogle: () => Promise<void>;
   addPassword: (password: string) => Promise<void>;
@@ -17,7 +18,9 @@ interface ProfileTabProps {
   setMessage: (value: string) => void;
 }
 
-export function ProfileTab({ displayName, email, favoriteCount, getToken, linkGoogle, addPassword, newPassword, setNewPassword, message, setMessage }: ProfileTabProps) {
+export function ProfileTab({ displayName, email, favoriteCount, authMethods, getToken, linkGoogle, addPassword, newPassword, setNewPassword, message, setMessage }: ProfileTabProps) {
+  const canAddPassword = authMethods?.google === true && authMethods.password === false;
+  const canLinkGoogle = authMethods?.password === true && authMethods.google === false;
   return (
     <section aria-labelledby="profile-title">
       <header className={styles.pageHead}><div><p className={styles.eyebrow}>Your account and preferences</p><h1 className={styles.pageTitle} id="profile-title">Your Profile<em>.</em></h1></div><span className={styles.topAvatar}>{displayName.charAt(0).toUpperCase()}</span></header>
@@ -31,12 +34,13 @@ export function ProfileTab({ displayName, email, favoriteCount, getToken, linkGo
           <p className={styles.eyebrow}>Account security</p><h2 className="m-0 text-2xl font-bold tracking-tight" id="signin-title">Sign-in methods</h2>
           <p className={styles.profileDescription}>Link another method only after signing in to this account. Matching email addresses are never linked automatically.</p>
           {message && <p className={styles.status} role="status">{message}</p>}
+          {authMethods?.password === true && authMethods.google === true && <p className={styles.profileDescription}>Password and Google sign-in are both linked to this account.</p>}
           <div className={styles.settingsForm}>
-            <button type="button" className={styles.buttonSecondary} onClick={async () => { setMessage(''); try { await linkGoogle(); } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not link Google.'); } }}>Link Google account</button>
-            <form className="flex min-w-0 flex-1 gap-2" onSubmit={async (event) => { event.preventDefault(); setMessage(''); try { await addPassword(newPassword); setNewPassword(''); setMessage('Password added to this account.'); } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not add password.'); } }}>
+            {canLinkGoogle && <button type="button" className={styles.buttonSecondary} onClick={async () => { setMessage(''); try { await linkGoogle(); } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not link Google.'); } }}>Link Google account</button>}
+            {canAddPassword && <form className="flex min-w-0 flex-1 gap-2" onSubmit={async (event) => { event.preventDefault(); setMessage(''); try { await addPassword(newPassword); setNewPassword(''); setMessage('Password added to this account.'); } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not add password.'); } }}>
               <input className={styles.input} type="password" minLength={10} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Add a password (10+ characters)" autoComplete="new-password" aria-label="New password, at least 10 characters" />
               <button className={styles.buttonPrimary} type="submit">Add password</button>
-            </form>
+            </form>}
           </div>
         </section>
       </div>

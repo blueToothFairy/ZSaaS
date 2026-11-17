@@ -130,6 +130,10 @@ export default class AuthService {
     return this.authRepository.findAuthUserById(userId);
   }
 
+  async getAuthMethods(userId: string) {
+    return this.authRepository.getAuthMethods(userId);
+  }
+
   async addPassword(userId: string, password: string): Promise<void> {
     if (password.length < 10 || password.length > 128) throw new AuthError(400, 'Password must be between 10 and 128 characters.');
     if (!(await this.authRepository.findAuthUserById(userId))) throw new AuthError(401, 'Please sign in again.');

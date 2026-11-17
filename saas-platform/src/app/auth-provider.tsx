@@ -2,7 +2,7 @@
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
-export interface AuthUser { id: string; email: string; name: string | null; }
+export interface AuthUser { id: string; email: string; name: string | null; authMethods?: { password: boolean; google: boolean }; }
 interface AuthResult { success: boolean; accessToken: string; user: AuthUser; isNewUser?: boolean; message?: string; code?: string; }
 interface AuthContextValue {
   user: AuthUser | null; isLoaded: boolean; getToken: () => Promise<string | null>;
@@ -74,6 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = await getToken();
     const response = await fetch('/api/auth/password/link', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ password }) });
     if (!response.ok) { const result = await response.json() as { message?: string }; throw new Error(result.message || 'Could not add password.'); }
+    const refreshed = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'same-origin' });
+    if (refreshed.ok) {
+      const result = await refreshed.json() as AuthResult;
+      startupPromise = Promise.resolve(result);
+      syncSession(result);
+    }
   };
   const linkGoogle = async () => {
     const token = await getToken();

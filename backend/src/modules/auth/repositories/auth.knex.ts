@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Knex } from 'knex';
 import { IAuthRepository, IAuthUser, RefreshSessionInput } from '../interfaces/auth.interface.js';
+import { AuthMethodsDTO } from '../dto/auth.dto.js';
 
 export default class AuthRepository implements IAuthRepository {
   constructor(private readonly db: Knex) {}
@@ -23,6 +24,14 @@ export default class AuthRepository implements IAuthRepository {
   async findPasswordHash(userId: string): Promise<string | undefined> {
     const row = await this.db('password_credentials').where({ user_id: userId }).first('password_hash');
     return row?.password_hash as string | undefined;
+  }
+
+  async getAuthMethods(userId: string): Promise<AuthMethodsDTO> {
+    const [passwordCredential, googleIdentity] = await Promise.all([
+      this.db('password_credentials').where({ user_id: userId }).first('user_id'),
+      this.db('oauth_identities').where({ user_id: userId, provider: 'google' }).first('user_id'),
+    ]);
+    return { password: Boolean(passwordCredential), google: Boolean(googleIdentity) };
   }
 
   async createPasswordAccount(user: IAuthUser, passwordHash: string, refresh: RefreshSessionInput): Promise<void> {
