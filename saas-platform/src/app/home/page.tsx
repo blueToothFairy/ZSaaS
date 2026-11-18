@@ -47,7 +47,7 @@ function getWeatherIcon(weather: WeatherData | null) {
 }
 
 export default function AppDashboard() {
-  const { getToken, user, isLoaded, logout, addPassword, linkGoogle } = useAppAuth();
+  const { requestWithAuth, user, isLoaded, logout, addPassword, linkGoogle } = useAppAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<DashboardTab>('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -103,8 +103,7 @@ export default function AppDashboard() {
   const fetchFavorites = useCallback(async () => {
     try {
       setIsFavoritesLoading(true);
-      const token = await getToken();
-      const response = await axios.get<FavoritesResponse>('/api/profile/favorites', { headers: { Authorization: `Bearer ${token}` } });
+      const response = await requestWithAuth((token) => axios.get<FavoritesResponse>('/api/profile/favorites', { headers: { Authorization: `Bearer ${token}` } }));
       const converted = response.data.data.favorites.map((favorite) => ({
         id: favorite.song_id,
         title: favorite.title,
@@ -123,7 +122,7 @@ export default function AppDashboard() {
     } finally {
       setIsFavoritesLoading(false);
     }
-  }, [getToken]);
+  }, [requestWithAuth]);
 
   useEffect(() => { void fetchFavorites(); }, [fetchFavorites]);
 
@@ -220,14 +219,13 @@ export default function AppDashboard() {
     }
     setFavoritedSongIds(nextIds);
     try {
-      const token = await getToken();
       if (isFavorite) {
-        await axios.delete(`/api/profile/favorites/${song.id}`, { headers: { Authorization: `Bearer ${token}` } });
+        await requestWithAuth((token) => axios.delete(`/api/profile/favorites/${song.id}`, { headers: { Authorization: `Bearer ${token}` } }));
       } else {
-        await axios.post('/api/profile/favorites', {
+        await requestWithAuth((token) => axios.post('/api/profile/favorites', {
           song_id: song.id, title: song.title, artist: song.artist, album: song.album,
           artwork: song.artwork, preview_url: song.previewUrl, external_url: song.externalUrl,
-        }, { headers: { Authorization: `Bearer ${token}` } });
+        }, { headers: { Authorization: `Bearer ${token}` } }));
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
@@ -255,8 +253,7 @@ export default function AppDashboard() {
       try {
         const formData = new FormData();
         formData.append('file', compressedFile);
-        const token = await getToken();
-        const response = await axios.post<{ songs?: Song[] }>('/api/vibe-scan', formData, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } });
+        const response = await requestWithAuth((token) => axios.post<{ songs?: Song[] }>('/api/vibe-scan', formData, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }));
         setScanResults(response.data.songs ?? []);
         setScanProgress(100);
       } finally {
@@ -298,7 +295,7 @@ export default function AppDashboard() {
           {activeTab === 'home' && <HomeTab displayName={displayName} greeting={greeting} songs={curatedSongs} weather={weatherData} session={session} clockTime={clockTime} weatherIcon={WeatherIcon} isLoading={isCuratedLoading} favoriteIds={favoritedSongIds} onNavigateScan={() => setActiveTab('ai-scan')} onPlay={playTrack} onToggleFavorite={handleToggleFavorite} />}
           {activeTab === 'ai-scan' && <VibeScanTab uploadedImage={uploadedImage} isAnalyzing={isAnalyzing} progress={scanProgress} results={scanResults} error={apiError} favoriteIds={favoritedSongIds} onImageUpload={handleImageUpload} onReset={resetScan} onPlay={playTrack} onToggleFavorite={handleToggleFavorite} />}
           {activeTab === 'favorites' && <FavoritesTab favorites={favorites} isLoading={isFavoritesLoading} onPlay={playTrack} onRemove={handleToggleFavorite} />}
-          {activeTab === 'profile' && <ProfileTab displayName={displayName} email={displayEmail || 'Your VibeTune account'} favoriteCount={favorites.length} authMethods={user?.authMethods} getToken={getToken} linkGoogle={linkGoogle} addPassword={addPassword} newPassword={newPassword} setNewPassword={setNewPassword} message={authSettingsMessage} setMessage={setAuthSettingsMessage} />}
+          {activeTab === 'profile' && <ProfileTab displayName={displayName} email={displayEmail || 'Your VibeTune account'} favoriteCount={favorites.length} authMethods={user?.authMethods} linkGoogle={linkGoogle} addPassword={addPassword} newPassword={newPassword} setNewPassword={setNewPassword} message={authSettingsMessage} setMessage={setAuthSettingsMessage} />}
         </main>
       </div>
       <MusicPlayer currentTrack={currentTrack} isPlaying={isAudioPlaying} progress={audioProgress} elapsed={audioElapsed} duration={audioDuration} volume={audioVolume} onVolumeChange={setAudioVolume} onPrevious={handlePreviousTrack} onNext={handleNextTrack} onToggle={toggleAudioPlayPause} onSeek={handleSeek} formatTime={formatTime} />

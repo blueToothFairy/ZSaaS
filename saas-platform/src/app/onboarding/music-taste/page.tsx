@@ -8,7 +8,7 @@ import MusicTasteEditor from '../../components/music-taste-editor';
 import styles from '../music-taste.module.css';
 
 export default function MusicTasteOnboardingPage() {
-  const { user, isLoaded, getToken } = useAppAuth();
+  const { user, isLoaded } = useAppAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function MusicTasteOnboardingPage() {
       <div className={styles.brand}><span className={styles.brandMark}><Music2 className="h-5 w-5" /></span><span>VIBETUNE / ONBOARDING</span></div>
       <section className={styles.panel}>
         <div className={styles.intro}><p className={styles.eyebrow}><Sparkles className="h-3.5 w-3.5" />Make it yours</p><h1 className={styles.title}>What does your music taste sound like?</h1><p className={styles.description}>Choose a few genres, artists, or tracks you love. We&apos;ll use your choices to shape recommendations. You can edit them anytime in your Profile.</p></div>
-        <MusicTasteEditor getToken={getToken} mode="wizard" onComplete={() => router.replace('/home')} onSkip={() => router.replace('/home')} />
+        <MusicTasteEditor mode="wizard" onComplete={() => router.replace('/home')} onSkip={() => router.replace('/home')} />
       </section>
       <p className={styles.footer}>You can finish this later from your Profile.</p>
     </div>

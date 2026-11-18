@@ -9,7 +9,6 @@ interface ProfileTabProps {
   email: string;
   favoriteCount: number;
   authMethods?: { password: boolean; google: boolean };
-  getToken: () => Promise<string | null>;
   linkGoogle: () => Promise<void>;
   addPassword: (password: string) => Promise<void>;
   newPassword: string;
@@ -18,7 +17,7 @@ interface ProfileTabProps {
   setMessage: (value: string) => void;
 }
 
-export function ProfileTab({ displayName, email, favoriteCount, authMethods, getToken, linkGoogle, addPassword, newPassword, setNewPassword, message, setMessage }: ProfileTabProps) {
+export function ProfileTab({ displayName, email, favoriteCount, authMethods, linkGoogle, addPassword, newPassword, setNewPassword, message, setMessage }: ProfileTabProps) {
   const canAddPassword = authMethods?.google === true && authMethods.password === false;
   const canLinkGoogle = authMethods?.password === true && authMethods.google === false;
   return (
@@ -47,7 +46,7 @@ export function ProfileTab({ displayName, email, favoriteCount, authMethods, get
       <section className={`${styles.card} ${styles.tastePanel} mt-4`}>
         <p className={styles.eyebrow}>Personalize the mix</p><h2 className="m-0 text-2xl font-bold tracking-tight">Music taste</h2>
         <p className={styles.profileDescription}>Choose genres, artists, tracks, and languages to shape your recommendations.</p>
-        <MusicTasteEditor getToken={getToken} />
+        <MusicTasteEditor />
       </section>
     </section>
   );
