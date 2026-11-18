@@ -18,6 +18,7 @@ describe("ISS-002 recommendation integration", () => {
         ];
       },
       getSettings: async () => ({ preferred_languages: ["en"], vocal_preference: "instrumental" }),
+      replaceForUser: async () => [],
     };
     const musicTaste = new MusicTasteService(repository);
     let clipCallCount = 0;
@@ -79,6 +80,7 @@ describe("ISS-002 recommendation integration", () => {
     const repository: IMusicTasteRepository = {
       getByUserId: async () => [],
       getSettings: async () => undefined,
+      replaceForUser: async () => [],
     };
     let downstreamCalls = 0;
     const clip: IAIVibeScanner = { extractVibes: async () => { downstreamCalls += 1; return []; } };
