@@ -3,6 +3,7 @@
 import { Children, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
+import { useAppAuth } from '../auth-provider';
 import styles from './music-taste-editor.module.css';
 
 type TasteType = 'genre' | 'artist' | 'track';
@@ -16,7 +17,8 @@ interface MusicTasteResponse { success: boolean; data: MusicTasteData; }
 interface SearchResponse { success?: boolean; data?: Song[] | { songs?: Song[]; results?: Song[]; tracks?: Song[] }; }
 
 const LANGUAGES = ['Arabic', 'Bengali', 'Chinese', 'Dutch', 'English', 'French', 'German', 'Hindi', 'Indonesian', 'Italian', 'Japanese', 'Korean', 'Portuguese', 'Punjabi', 'Russian', 'Spanish', 'Thai', 'Turkish', 'Vietnamese'];
-export default function MusicTasteEditor({ getToken, mode = 'profile', onComplete, onSkip }: { getToken: () => Promise<string | null>; mode?: 'profile' | 'wizard'; onComplete?: () => void; onSkip?: () => void }) {
+export default function MusicTasteEditor({ mode = 'profile', onComplete, onSkip }: { mode?: 'profile' | 'wizard'; onComplete?: () => void; onSkip?: () => void }) {
+  const { requestWithAuth } = useAppAuth();
   const [preferences, setPreferences] = useState<TastePreference[]>([]);
   const [genres, setGenres] = useState<MusicGenreOption[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
@@ -46,9 +48,7 @@ export default function MusicTasteEditor({ getToken, mode = 'profile', onComplet
     setLoadError(false);
     setMessage('');
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Your session has expired. Please sign in again.');
-      const response = await axios.get<MusicTasteResponse>('/api/profile/music-taste', { headers: { Authorization: `Bearer ${token}` } });
+      const response = await requestWithAuth((token) => axios.get<MusicTasteResponse>('/api/profile/music-taste', { headers: { Authorization: `Bearer ${token}` } }));
       setPreferences(response.data.data.preferences ?? []);
       setGenres(response.data.data.availableGenres ?? []);
       setLanguages(response.data.data.preferredLanguages ?? []);
@@ -57,7 +57,7 @@ export default function MusicTasteEditor({ getToken, mode = 'profile', onComplet
       setLoadError(true);
       setMessage(axios.isAxiosError(error) ? error.response?.data?.message || 'Could not load your music taste. Please try again.' : error instanceof Error ? error.message : 'Could not load your music taste. Please try again.');
     } finally { setIsLoading(false); }
-  }, [getToken]);
+  }, [requestWithAuth]);
 
   useEffect(() => { void loadProfile(); }, [loadProfile]);
 
@@ -81,9 +81,7 @@ export default function MusicTasteEditor({ getToken, mode = 'profile', onComplet
     if (!query.trim()) { setMessage('Enter a track name first.'); return; }
     setIsSearching(true); setMessage('');
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Your session has expired. Please sign in again.');
-      const response = await axios.post<SearchResponse>('/api/song/search', { query: query.trim(), limit: 20 }, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await requestWithAuth((token) => axios.post<SearchResponse>('/api/song/search', { query: query.trim(), limit: 20 }, { headers: { Authorization: `Bearer ${token}` } }));
       const data = response.data.data;
       const results = Array.isArray(data) ? data : data?.songs ?? data?.results ?? data?.tracks ?? [];
       setTrackResults(results);
@@ -97,9 +95,7 @@ export default function MusicTasteEditor({ getToken, mode = 'profile', onComplet
     event?.preventDefault();
     setIsSaving(true); setMessage('');
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Your session has expired. Please sign in again.');
-      const response = await axios.put<MusicTasteResponse>('/api/profile/music-taste', { preferences, preferredLanguages: languages, vocalPreference }, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await requestWithAuth((token) => axios.put<MusicTasteResponse>('/api/profile/music-taste', { preferences, preferredLanguages: languages, vocalPreference }, { headers: { Authorization: `Bearer ${token}` } }));
       setPreferences(response.data.data.preferences ?? preferences);
       setLanguages(response.data.data.preferredLanguages ?? languages);
       setMessage(response.data.data.qualifiesForRecommendations ? 'Music taste saved. Your recommendations are personalized.' : 'Music taste saved. Add two preferred genres or three favorite tracks for personalized recommendations.');
