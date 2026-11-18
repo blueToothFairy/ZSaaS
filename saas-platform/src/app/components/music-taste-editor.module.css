@@ -1,0 +1,38 @@
+.wizard {
+  --taste-ink: #101014;
+  --taste-muted: #62616a;
+  --taste-blue: #3155e7;
+  --taste-acid: #d4ff00;
+  color: var(--taste-ink);
+}
+
+.wizard :global(.text-white) { color: var(--taste-ink) !important; }
+.wizard :global([class*="text-white/"]),
+.wizard :global(.text-slate-300),
+.wizard :global(.text-slate-400),
+.wizard :global(.text-slate-500) { color: var(--taste-muted) !important; }
+.wizard :global([class*="border-white/"]) { border-color: rgb(16 16 20 / 20%) !important; }
+.wizard :global([class*="bg-slate-950"]),
+.wizard :global([class*="bg-slate-900"]) { background-color: #fffaf0 !important; }
+.wizard :global([class*="bg-white/"]) { background-color: rgb(16 16 20 / 4%) !important; }
+.wizard :global([class*="hover:bg-white/"]:hover) { background-color: #e8edff !important; }
+.wizard :global(.bg-sky-200) { background-color: var(--taste-acid) !important; }
+.wizard :global(.bg-sky-200\/10) { background-color: rgb(49 85 231 / 9%) !important; }
+.wizard :global(.bg-sky-200\/\[0\.035\]) { background-color: rgb(16 16 20 / 3%) !important; }
+.wizard :global(.text-sky-100),
+.wizard :global(.text-sky-200),
+.wizard :global(.text-sky-50) { color: var(--taste-blue) !important; }
+.wizard :global(.text-emerald-50) { color: #14532d !important; }
+.wizard :global(.text-rose-50) { color: #7d1722 !important; }
+.wizard :global(.text-emerald-100) { color: #14532d !important; }
+.wizard :global(.text-rose-100) { color: #7d1722 !important; }
+.wizard :global([class*="bg-rose-200/"]) { background-color: #fce6e8 !important; }
+.wizard :global([class*="border-sky-200/"]),
+.wizard :global([class*="border-sky-300/"]) { border-color: rgb(49 85 231 / 25%) !important; }
+.wizard :global([class*="bg-sky-300/"]) { background-color: rgb(49 85 231 / 9%) !important; }
+.wizard :global(.focus\:bg-white\/10:focus),
+.wizard :global(.hover\:bg-white\/10:hover) { background-color: #e8edff !important; }
+.wizard :global(button:focus-visible),
+.wizard :global(input:focus-visible) { outline: 3px solid var(--taste-blue); outline-offset: 2px; }
+.wizard :global(button:disabled) { opacity: .55; }
+

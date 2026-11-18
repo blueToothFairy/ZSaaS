@@ -1,0 +1,634 @@
+{
+  "version": "iss-002-v1.1",
+  "description": "Fixed metadata-only recommendation fixtures. Relevance is defined by explicit genre, mood, artist, and dislike matches; no live provider data is used. Genre preferences within each scenario must not conflict after canonical genre resolution. Baseline is a deterministic context-only proxy for the existing image-keyword flow; live-provider recency and random tie-breaking are omitted.",
+  "relevanceRules": {
+    "dislikedGenre": 0,
+    "preferredArtist": 3,
+    "bothTasteAndContextGenre": 3,
+    "tasteOrContextGenre": 2,
+    "otherwise": 0
+  },
+  "catalog": [
+    {
+      "id": "t1",
+      "title": "Golden Hour",
+      "artist": "Aster Vale",
+      "genre": "Indie",
+      "moods": [
+        "peaceful",
+        "nostalgic"
+      ]
+    },
+    {
+      "id": "t2",
+      "title": "Still Water",
+      "artist": "North Window",
+      "genre": "Ambient",
+      "moods": [
+        "peaceful",
+        "melancholic"
+      ]
+    },
+    {
+      "id": "t3",
+      "title": "Paper Lanterns",
+      "artist": "Mira June",
+      "genre": "Acoustic",
+      "moods": [
+        "nostalgic",
+        "romantic"
+      ]
+    },
+    {
+      "id": "t4",
+      "title": "City Lights",
+      "artist": "Neon Harbour",
+      "genre": "Electronic",
+      "moods": [
+        "energetic"
+      ]
+    },
+    {
+      "id": "t5",
+      "title": "Open Roads",
+      "artist": "Neon Harbour",
+      "genre": "Pop",
+      "moods": [
+        "energetic",
+        "romantic"
+      ]
+    },
+    {
+      "id": "t6",
+      "title": "Blue Room",
+      "artist": "Low Tide Trio",
+      "genre": "Jazz",
+      "moods": [
+        "peaceful",
+        "melancholic"
+      ]
+    },
+    {
+      "id": "t7",
+      "title": "Slow Dancing",
+      "artist": "Mira June",
+      "genre": "Soul",
+      "moods": [
+        "romantic",
+        "peaceful"
+      ]
+    },
+    {
+      "id": "t8",
+      "title": "After the Rain",
+      "artist": "Aster Vale",
+      "genre": "Acoustic",
+      "moods": [
+        "melancholic",
+        "nostalgic"
+      ]
+    },
+    {
+      "id": "t9",
+      "title": "Bright Side",
+      "artist": "Paper Planes",
+      "genre": "Pop",
+      "moods": [
+        "energetic",
+        "peaceful"
+      ]
+    },
+    {
+      "id": "t10",
+      "title": "Soft Focus",
+      "artist": "Low Tide Trio",
+      "genre": "Ambient",
+      "moods": [
+        "romantic",
+        "nostalgic"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "s01",
+      "mood": "peaceful",
+      "contextGenres": [
+        "Ambient",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Indie",
+        "Acoustic"
+      ],
+      "dislikedGenres": [
+        "Electronic"
+      ],
+      "favoriteArtists": [
+        "Aster Vale"
+      ],
+      "platform": "instagram",
+      "contentType": "story",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img01-rainy-london.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-rainy-city-street-at-night-wNGooMHgJFE",
+        "description": "Rainy London city street at night; wet pavement and urban lights.",
+        "photographer": "Kevin Grieve"
+      }
+    },
+    {
+      "id": "s02",
+      "mood": "peaceful",
+      "contextGenres": [
+        "Ambient",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Jazz",
+        "Ambient"
+      ],
+      "dislikedGenres": [
+        "Pop"
+      ],
+      "favoriteArtists": [
+        "Low Tide Trio"
+      ],
+      "platform": "tiktok",
+      "contentType": "short",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img02-golden-beach.jpg",
+        "sourceUrl": "https://unsplash.com/fr/photos/plage-bord-de-mer-au-coucher-du-soleil-uQDRDqpYJHI",
+        "description": "Ocean shore at sunset with warm orange and pink light reflecting on calm water.",
+        "photographer": "Cristofer Maximilian"
+      }
+    },
+    {
+      "id": "s03",
+      "mood": "peaceful",
+      "contextGenres": [
+        "Ambient",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Soul",
+        "Pop"
+      ],
+      "dislikedGenres": [
+        "Jazz"
+      ],
+      "favoriteArtists": [
+        "Mira June"
+      ],
+      "platform": "youtube",
+      "contentType": "video",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img03-sunlit-forest.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-forest-filled-with-lots-of-trees-covered-in-sunlight-P4f7H2B7aF4",
+        "description": "Dense forest with sunlight rays cutting through mist between trees.",
+        "photographer": "Mark Olsen"
+      }
+    },
+    {
+      "id": "s04",
+      "mood": "peaceful",
+      "contextGenres": [
+        "Ambient",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Electronic",
+        "Pop"
+      ],
+      "dislikedGenres": [
+        "Acoustic"
+      ],
+      "favoriteArtists": [
+        "Neon Harbour"
+      ],
+      "platform": "instagram",
+      "contentType": "reel",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img04-snowy-peaks.jpg",
+        "sourceUrl": "https://unsplash.com/de/fotos/schneebedeckte-berggipfel-erleuchtet-vom-sonnenaufgangslicht-bei-sonnenaufgang-3LXPDYb83MY",
+        "description": "Jagged snow-covered mountain peaks glowing pink in early morning light.",
+        "photographer": "Shutter Speed"
+      }
+    },
+    {
+      "id": "s05",
+      "mood": "nostalgic",
+      "contextGenres": [
+        "Indie",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Indie",
+        "Ambient"
+      ],
+      "dislikedGenres": [
+        "Soul"
+      ],
+      "favoriteArtists": [
+        "Aster Vale"
+      ],
+      "platform": "tiktok",
+      "contentType": "short",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img05-coffee-shop.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-cozy-coffee-shop-interior-with-wooden-details-dqI5cbznt8s",
+        "description": "Cozy coffee shop interior with wooden details, espresso equipment, and warm seating.",
+        "photographer": "Haberdoedas"
+      }
+    },
+    {
+      "id": "s06",
+      "mood": "nostalgic",
+      "contextGenres": [
+        "Indie",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Acoustic",
+        "Soul"
+      ],
+      "dislikedGenres": [
+        "Electronic"
+      ],
+      "favoriteArtists": [
+        "Mira June"
+      ],
+      "platform": "instagram",
+      "contentType": "story",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img06-foggy-highway.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-foggy-highway-with-trees-lining-the-sides-_MkN6FkVZsg",
+        "description": "Highway bordered by trees disappearing into dense fog.",
+        "photographer": "Viktor Rejent"
+      }
+    },
+    {
+      "id": "s07",
+      "mood": "nostalgic",
+      "contextGenres": [
+        "Indie",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Jazz",
+        "Ambient"
+      ],
+      "dislikedGenres": [
+        "Pop"
+      ],
+      "favoriteArtists": [
+        "Low Tide Trio"
+      ],
+      "platform": "youtube",
+      "contentType": "video",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img07-neon-alley.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-dark-alley-at-night-with-a-street-light-myVedXpqrVg",
+        "description": "Dark urban alley at night illuminated by a streetlight and neon signs.",
+        "photographer": "Raymond Kotewicz"
+      }
+    },
+    {
+      "id": "s08",
+      "mood": "nostalgic",
+      "contextGenres": [
+        "Indie",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Electronic",
+        "Pop"
+      ],
+      "dislikedGenres": [
+        "Indie"
+      ],
+      "favoriteArtists": [
+        "Neon Harbour"
+      ],
+      "platform": "instagram",
+      "contentType": "post",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img08-desert-traveler.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-lone-person-explores-vast-desert-dunes-at-sunset-qYvcpEBLB1c",
+        "description": "A lone traveler walking across vast Moroccan sand dunes at sunset.",
+        "photographer": "Beno?t Deschasaux"
+      }
+    },
+    {
+      "id": "s09",
+      "mood": "energetic",
+      "contextGenres": [
+        "Pop",
+        "Electronic"
+      ],
+      "tasteGenres": [
+        "Electronic",
+        "Pop"
+      ],
+      "dislikedGenres": [
+        "Jazz"
+      ],
+      "favoriteArtists": [
+        "Neon Harbour"
+      ],
+      "platform": "tiktok",
+      "contentType": "short",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img09-rainy-seattle.jpg",
+        "sourceUrl": "https://unsplash.com/photos/rainy-city-street-at-night-with-bright-lights-coam-W6_tK0",
+        "description": "Rainy Seattle street at night with bright blue urban lights.",
+        "photographer": "Josh Hild"
+      }
+    },
+    {
+      "id": "s10",
+      "mood": "energetic",
+      "contextGenres": [
+        "Pop",
+        "Electronic"
+      ],
+      "tasteGenres": [
+        "Indie",
+        "Acoustic"
+      ],
+      "dislikedGenres": [
+        "Jazz"
+      ],
+      "favoriteArtists": [
+        "Paper Planes"
+      ],
+      "platform": "instagram",
+      "contentType": "reel",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img10-mountain-sunrise.jpg",
+        "sourceUrl": "https://unsplash.com/s/photos/sunrise-mountain",
+        "description": "Golden sun rising over layered mountain ridges and open slopes.",
+        "photographer": "Unsplash contributor"
+      }
+    },
+    {
+      "id": "s11",
+      "mood": "energetic",
+      "contextGenres": [
+        "Pop",
+        "Electronic"
+      ],
+      "tasteGenres": [
+        "Soul",
+        "Jazz"
+      ],
+      "dislikedGenres": [
+        "Electronic"
+      ],
+      "favoriteArtists": [
+        "Low Tide Trio"
+      ],
+      "platform": "youtube",
+      "contentType": "video",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img11-cloudy-beach.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-cloudy-day-at-the-beach-with-waves-coming-in-QZpCiSbtodI",
+        "description": "Grey clouds and waves rolling onto a beach on a rainy day.",
+        "photographer": "Jannes Wulff"
+      }
+    },
+    {
+      "id": "s12",
+      "mood": "energetic",
+      "contextGenres": [
+        "Pop",
+        "Electronic"
+      ],
+      "tasteGenres": [
+        "Ambient",
+        "Indie"
+      ],
+      "dislikedGenres": [
+        "Soul"
+      ],
+      "favoriteArtists": [
+        "Aster Vale"
+      ],
+      "platform": "instagram",
+      "contentType": "story",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img12-city-sunset.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-city-skyline-at-sunset-qK-t2b1Ys6U",
+        "description": "Los Angeles skyline viewed at sunset from Griffith Observatory.",
+        "photographer": "Hannah Busing"
+      }
+    },
+    {
+      "id": "s13",
+      "mood": "romantic",
+      "contextGenres": [
+        "Soul",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Soul",
+        "Acoustic"
+      ],
+      "dislikedGenres": [
+        "Electronic"
+      ],
+      "favoriteArtists": [
+        "Mira June"
+      ],
+      "platform": "instagram",
+      "contentType": "story",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img13-wolf-forest.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-wolf-standing-in-the-middle-of-a-forest-gjqCixjvpkA",
+        "description": "A grey wolf standing among trees in a forest.",
+        "photographer": "Wild Spirit"
+      }
+    },
+    {
+      "id": "s14",
+      "mood": "romantic",
+      "contextGenres": [
+        "Soul",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Indie",
+        "Ambient"
+      ],
+      "dislikedGenres": [
+        "Pop"
+      ],
+      "favoriteArtists": [
+        "Aster Vale"
+      ],
+      "platform": "tiktok",
+      "contentType": "short",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img14-misty-coast.jpg",
+        "sourceUrl": "https://unsplash.com/photos/waves-crash-on-a-misty-coastline-under-a-cloudy-sky-wxEFIdymo4Q",
+        "description": "Waves rolling along a misty Monterey coastline under a cloudy sky.",
+        "photographer": "Steve Gribble"
+      }
+    },
+    {
+      "id": "s15",
+      "mood": "romantic",
+      "contextGenres": [
+        "Soul",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Jazz",
+        "Ambient"
+      ],
+      "dislikedGenres": [
+        "Acoustic"
+      ],
+      "favoriteArtists": [
+        "Low Tide Trio"
+      ],
+      "platform": "youtube",
+      "contentType": "video",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img15-sunset-dunes.jpg",
+        "sourceUrl": "https://unsplash.com/photos/sunset-over-sand-dunes-in-a-desert-landscape-B6ttZN3Cyik",
+        "description": "Desert sand dunes at dusk beneath purple and orange clouds.",
+        "photographer": "Matt Boitor"
+      }
+    },
+    {
+      "id": "s16",
+      "mood": "romantic",
+      "contextGenres": [
+        "Soul",
+        "Acoustic"
+      ],
+      "tasteGenres": [
+        "Electronic",
+        "Pop"
+      ],
+      "dislikedGenres": [
+        "Jazz"
+      ],
+      "favoriteArtists": [
+        "Neon Harbour"
+      ],
+      "platform": "instagram",
+      "contentType": "post",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img16-city-water.jpg",
+        "sourceUrl": "https://unsplash.com/photos/city-skyline-at-sunset-over-water-OY3hlyStY7o",
+        "description": "City skyline seen across water at sunset.",
+        "photographer": "Bryan Brittos"
+      }
+    },
+    {
+      "id": "s17",
+      "mood": "melancholic",
+      "contextGenres": [
+        "Indie",
+        "Ambient"
+      ],
+      "tasteGenres": [
+        "Indie",
+        "Acoustic"
+      ],
+      "dislikedGenres": [
+        "Pop"
+      ],
+      "favoriteArtists": [
+        "Aster Vale"
+      ],
+      "platform": "youtube",
+      "contentType": "video",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img17-foggy-forest-road.jpg",
+        "sourceUrl": "https://unsplash.com/photos/foggy-road-through-a-forest-of-bare-trees-5NXFGwvlTUo",
+        "description": "A winding road through bare trees fading into thick forest fog.",
+        "photographer": "Ingmar"
+      }
+    },
+    {
+      "id": "s18",
+      "mood": "melancholic",
+      "contextGenres": [
+        "Indie",
+        "Ambient"
+      ],
+      "tasteGenres": [
+        "Jazz",
+        "Ambient"
+      ],
+      "dislikedGenres": [
+        "Soul"
+      ],
+      "favoriteArtists": [
+        "Low Tide Trio"
+      ],
+      "platform": "instagram",
+      "contentType": "story",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img18-misty-forest-sun.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-road-winds-through-a-foggy-dark-forest-vhA_N-0KDZw",
+        "description": "A forest road vanishing into a dark, mist-filled evergreen forest.",
+        "photographer": "Benjamin Chambon"
+      }
+    },
+    {
+      "id": "s19",
+      "mood": "melancholic",
+      "contextGenres": [
+        "Indie",
+        "Ambient"
+      ],
+      "tasteGenres": [
+        "Soul",
+        "Pop"
+      ],
+      "dislikedGenres": [
+        "Acoustic"
+      ],
+      "favoriteArtists": [
+        "Mira June"
+      ],
+      "platform": "tiktok",
+      "contentType": "short",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img19-beach-horizon.jpg",
+        "sourceUrl": "https://unsplash.com/photos/the-sun-is-setting-over-the-ocean-on-the-beach-YpiC8yGGZKY",
+        "description": "Sun sinking over the ocean as pink and purple clouds reflect on gentle waves.",
+        "photographer": "Calvin Kinateder"
+      }
+    },
+    {
+      "id": "s20",
+      "mood": "melancholic",
+      "contextGenres": [
+        "Indie",
+        "Ambient"
+      ],
+      "tasteGenres": [
+        "Electronic",
+        "Pop"
+      ],
+      "dislikedGenres": [
+        "Jazz"
+      ],
+      "favoriteArtists": [
+        "Neon Harbour"
+      ],
+      "platform": "instagram",
+      "contentType": "reel",
+      "image": {
+        "path": "artifacts/iss-002-internet-images/img20-neom-desert.jpg",
+        "sourceUrl": "https://unsplash.com/photos/a-person-is-walking-in-the-desert-at-sunset-STV2s3FYw7Y",
+        "description": "A person walking across red sand dunes and mountain valleys at sunset in NEOM.",
+        "photographer": "NEOM"
+      }
+    }
+  ]
+}

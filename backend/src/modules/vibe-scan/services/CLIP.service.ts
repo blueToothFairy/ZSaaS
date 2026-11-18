@@ -4,10 +4,9 @@ import axios, { AxiosError } from "axios";
 export default class CLIPService implements IAIVibeScanner {
   async extractVibes(data: FormData): Promise<Vibe[]> {
     const CLIP_URL = process.env.CLIP_URL;
-    console.log('process.env.CLIP_URL', CLIP_URL);
     try {
       const response = await axios.post<{ top_keywords: Vibe[] }>(
-        `${CLIP_URL}/extract-vibes`, 
+        `${CLIP_URL}/extract-vibes`,
         data,
         {
           timeout: 30000,
@@ -17,15 +16,14 @@ export default class CLIPService implements IAIVibeScanner {
       );
 
       if (!response.data || !Array.isArray(response.data.top_keywords)) {
-        throw new Error('Invalid response format from AI service');
+        throw new Error("Invalid response format from AI service");
       }
 
       return response.data.top_keywords;
-
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
-        
+
         if (axiosError.response) {
           throw new Error(
             `AI service error: ${axiosError.response.status} - ${
@@ -33,7 +31,7 @@ export default class CLIPService implements IAIVibeScanner {
             }`
           );
         } else if (axiosError.request) {
-          throw new Error('AI service did not respond. Please try again.');
+          throw new Error("AI service did not respond. Please try again.");
         } else {
           throw new Error(`Request failed: ${axiosError.message}`);
         }

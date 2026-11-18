@@ -33,8 +33,6 @@ Pillow
 numpy
 onnxruntime
 transformers
-psutil
-
 ```
 
 ### 3. `README.md`

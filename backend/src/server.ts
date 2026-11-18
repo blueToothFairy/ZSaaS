@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import app, { attachRateLimiters } from './app.js';
+import app from './app.js';
 import { redisClient } from './shared/redis/redisClient.js';
 
 const PORT = process.env.PORT || 5000;
@@ -13,10 +13,6 @@ async function startServer() {
   try {
     // Initialize Redis connection (non-blocking)
     await redisClient.initialize();
-
-    // Attach rate limiters AFTER Redis is initialized
-    // This ensures they can detect Redis availability at middleware creation time
-    attachRateLimiters(app);
 
     // Start Express server
     app.listen(PORT, () => {

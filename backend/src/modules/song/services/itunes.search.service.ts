@@ -1,4 +1,4 @@
-import ISongSearch, { Song, SearchResult } from "../interfaces/song-search.interface.js";
+import ISongSearch, { Song, SearchResult, SearchResultWithCandidates, RecommendationQuery, RetrievedCandidate } from "../interfaces/song-search.interface.js";
 import axios from "axios";
 import { cacheService } from "../../../shared/cache/cacheService.js";
 
@@ -12,6 +12,8 @@ interface ITunesResult {
   trackTimeMillis?: number;
   releaseDate?: string;
   trackId: number;
+  artistId?: number;
+  primaryGenreName?: string;
 }
 
 interface ITunesResponse {
@@ -56,32 +58,78 @@ export default class ITunesSearchService implements ISongSearch {
   }
 
   async searchByKeywords(keywords: string[], limit: number = 10, country: string = "US"): Promise<SearchResult> {
+    return (await this.searchByKeywordsWithCandidates(keywords, limit, country)).result;
+  }
+
+  async searchByKeywordsWithCandidates(keywords: string[], limit: number = 10, country: string = "US", deterministic = false): Promise<SearchResultWithCandidates> {
     const normalizedKeywords = this.normalizeKeywords(keywords);
     if (normalizedKeywords.length === 0) {
-      return {
-        songs: [],
-        query: "",
-        totalResults: 0,
-      };
+      return { result: { songs: [], query: "", totalResults: 0 }, candidates: [] };
     }
 
     const normalizedCountry = this.normalizeCountry(country);
-    const queryVariants = this.buildQueryVariants(normalizedKeywords);
-    const candidates = await this.collectCandidates(normalizedKeywords, queryVariants, limit, normalizedCountry);
+    const queryVariants = this.buildQueryVariants(normalizedKeywords, deterministic);
+    const candidates = await this.collectCandidates(normalizedKeywords, queryVariants, limit, normalizedCountry, deterministic);
     const songs = this.rankCandidates(candidates, normalizedKeywords, normalizedCountry, limit);
 
     return {
-      songs,
-      query: normalizedKeywords.join(", "),
-      totalResults: songs.length,
+      result: {
+        songs,
+        query: normalizedKeywords.join(", "),
+        totalResults: songs.length,
+      },
+      candidates: candidates.map((candidate) => candidate.song),
     };
+  }
+
+  async searchCandidates(queries: RecommendationQuery[], country: string = "US", concurrency: number = 3): Promise<RetrievedCandidate[]> {
+    const normalizedCountry = this.normalizeCountry(country);
+    const safeConcurrency = Math.max(1, Math.min(4, Math.floor(concurrency) || 1));
+    const maxQueriesPerCountry = Math.max(4, Math.ceil(this.maxQueries / this.buildCountrySearchOrder(normalizedCountry).length));
+    const queryMap = new Map<string, RecommendationQuery>();
+    for (const item of queries) {
+      if (!item.query.trim()) continue;
+      const key = item.query.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US");
+      const existing = queryMap.get(key);
+      if (existing) existing.groups = [...new Set([...existing.groups, ...item.groups])];
+      else queryMap.set(key, { ...item, query: item.query.trim().replace(/\s+/g, " ") });
+    }
+    const uniqueQueries = [...queryMap.values()].slice(0, maxQueriesPerCountry);
+    const result = new Map<string, RetrievedCandidate>();
+    let cursor = 0;
+
+    const worker = async () => {
+      while (cursor < uniqueQueries.length) {
+        const current = uniqueQueries[cursor++];
+        if (!current) continue;
+        for (const searchCountry of this.buildCountrySearchOrder(normalizedCountry)) {
+          try {
+            const songs = await this.fetchSongsForQuery(current.query, this.maxSongsPerQuery, searchCountry);
+            for (const song of songs) {
+              const key = song.id || `${song.artist.toLocaleLowerCase("en-US")}|${song.title.toLocaleLowerCase("en-US")}`;
+              const candidate = result.get(key) ?? { track: song, provenance: [] };
+              if (!candidate.provenance.some((item) => item.query === current.query && item.sourceCountry === searchCountry)) {
+                candidate.provenance.push({ query: current.query, groups: [...current.groups], sourceCountry: searchCountry });
+              }
+              result.set(key, candidate);
+            }
+          } catch (error) {
+            console.error(`Skipping recommendation query "${current.query}" for ${searchCountry}:`, axios.isAxiosError(error) ? error.message : error);
+          }
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(safeConcurrency, uniqueQueries.length) }, () => worker()));
+    return [...result.values()];
   }
 
   private async collectCandidates(
     keywords: string[],
     queryVariants: string[],
     limit: number,
-    preferredCountry: string
+    preferredCountry: string,
+    deterministic = false
   ): Promise<SearchCandidate[]> {
     const candidates: SearchCandidate[] = [];
     const searchCountries = this.buildCountrySearchOrder(preferredCountry);
@@ -102,7 +150,7 @@ export default class ITunesSearchService implements ISongSearch {
           for (const song of songs) {
             candidates.push({
               song,
-              score: this.calculateSongScore(song, keywords, query, country, preferredCountry),
+              score: this.calculateSongScore(song, keywords, query, country, preferredCountry, deterministic),
               query,
               sourceCountry: country,
             });
@@ -192,7 +240,8 @@ export default class ITunesSearchService implements ISongSearch {
     keywords: string[],
     query: string,
     sourceCountry: string,
-    preferredCountry: string
+    preferredCountry: string,
+    deterministic = false
   ): number {
     const haystack = `${song.title} ${song.artist} ${song.album}`.toLowerCase();
     const normalizedQuery = query.toLowerCase();
@@ -235,7 +284,7 @@ export default class ITunesSearchService implements ISongSearch {
       score += 2;
     }
 
-    return score + this.randomTieBreaker();
+    return score + (deterministic ? 0 : this.randomTieBreaker());
   }
 
   private calculateRecencyScore(releaseDate?: string): number {
@@ -270,14 +319,14 @@ export default class ITunesSearchService implements ISongSearch {
     return 6;
   }
 
-  private buildQueryVariants(keywords: string[]): string[] {
+  private buildQueryVariants(keywords: string[], deterministic = false): string[] {
     const normalizedKeywords = this.normalizeKeywords(keywords);
     const queries: string[] = [];
 
     const phraseKeywords = normalizedKeywords.filter((keyword) => keyword.includes(" "));
     const singleKeywords = normalizedKeywords.filter((keyword) => !keyword.includes(" "));
-    const shuffledPhrases = this.shuffle(phraseKeywords);
-    const shuffledSingles = this.shuffle(singleKeywords);
+    const shuffledPhrases = deterministic ? phraseKeywords : this.shuffle(phraseKeywords);
+    const shuffledSingles = deterministic ? singleKeywords : this.shuffle(singleKeywords);
     const topSingles = shuffledSingles.slice(0, 8);
     const topPhrases = shuffledPhrases.slice(0, 6);
 
@@ -323,6 +372,9 @@ export default class ITunesSearchService implements ISongSearch {
           album: result.collectionName,
           artwork: result.artworkUrl100?.replace(/100x100/, "200x200") || "",
         };
+
+        if (result.artistId !== undefined) song.artistId = String(result.artistId);
+        if (result.primaryGenreName) song.primaryGenreName = result.primaryGenreName;
 
         if (result.previewUrl) {
           song.previewUrl = result.previewUrl;

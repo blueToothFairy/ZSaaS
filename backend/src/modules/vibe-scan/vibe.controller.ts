@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import axios from 'axios';
 import VibeScannerService from "./services/index.js";
-import ClerkRequest from "../../shared/types/ClerkRequest.js";
+import AuthenticatedRequest from "../../shared/types/AuthenticatedRequest.js";
 import { resolveCountryCodeFromRequest } from "../../shared/utils/requestCountry.js";
 
 export default class VibeScannerController {
@@ -9,9 +9,8 @@ export default class VibeScannerController {
     private readonly vibeService: VibeScannerService
   ) {}
 
-  async getSongs(req: ClerkRequest, res: Response): Promise<void> {
-    console.log('get songs');
-    const userId = req.auth.userId;
+  async getSongs(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const userId = req.userId;
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -36,29 +35,27 @@ export default class VibeScannerController {
       }
 
       const clientCountryCode = resolveCountryCodeFromRequest(req);
-      const songs = await this.vibeService.getVibeMatchingSongs(
+      const platform = typeof req.body?.platform === "string" ? req.body.platform.trim() : "unspecified";
+      const contentType = typeof req.body?.contentType === "string" ? req.body.contentType.trim() : "unspecified";
+      if (platform.length > 80 || contentType.length > 80) {
+        res.status(400).json({ success: false, error: "Intent values must be 80 characters or fewer" });
+        return;
+      }
+      const requestContext = { platform: platform || "unspecified", contentType: contentType || "unspecified" };
+      const recommendations = await this.vibeService.getVibeMatchingSongs(
+        userId,
         req.file.buffer,
         req.file.originalname,
         req.file.mimetype,
-        clientCountryCode
+        clientCountryCode,
+        requestContext
       );
-
-      // Save to DB (async, non-blocking)
-      // this.aiRepo.create({
-      //   user_id: userId,
-      //   feature_type: "match_music",
-      //   input_params: {
-      //     imageFile: req.file.buffers
-      //   },
-      //   output_data: {
-      //     songs
-      //   }
-      // });
 
       // Return response
       res.status(200).json({
         success: true,
-        songs,
+        songs: recommendations.map((item) => ({ ...item.track, score: item.score, componentScores: item.componentScores, reasons: item.reasons })),
+        recommendations,
       });
 
     } catch (error: any) {

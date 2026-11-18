@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from './auth-provider';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,8 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en">
+    <html lang="en">
         <head>
           <link rel="icon" href="/assets/brand/vibetune_logo.png" sizes="any" />
           <link rel="apple-touch-icon" href="/assets/brand/vibetune_logo.png" />
@@ -41,9 +40,8 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </body>
       </html>
-    </ClerkProvider>
   );
 }
