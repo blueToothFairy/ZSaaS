@@ -78,13 +78,34 @@
 .empty { padding: 32px 20px; color: var(--muted); background: var(--paper-high); border: 1px dashed rgba(16,16,20,.25); text-align: center; }
 .card { padding: clamp(18px, 3vw, 30px); background: var(--paper-high); border: 1px solid rgba(16,16,20,.14); }
 .scanGrid { display: grid; grid-template-columns: minmax(260px,.9fr) minmax(0,1.1fr); gap: 16px; }
-.upload { position: relative; display: grid; min-height: 350px; place-items: center; overflow: hidden; border: 2px dashed rgba(16,16,20,.32); background: #e9e3d8; text-align: center; cursor: pointer; }
-.upload:hover { border-color: var(--blue); }
+.upload { position: relative; display: grid; min-height: 350px; place-items: center; overflow: hidden; border: 1px solid var(--ink); border-left: 6px solid var(--acid); background: #e9e3d8; text-align: center; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease; }
+.upload::before { content: ""; position: absolute; width: 250px; height: 250px; border: 1px solid rgba(49,85,231,.16); border-radius: 50%; box-shadow: 0 0 0 22px rgba(49,85,231,.035), 0 0 0 48px rgba(49,85,231,.025); }
+.upload:hover { border-color: var(--blue); box-shadow: 5px 5px 0 var(--blue); }
 .upload img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.uploadContent { position: relative; z-index: 1; padding: 24px; }
-.uploadContent strong { display: block; font-size: 22px; letter-spacing: -.04em; }
+.uploadReady img { filter: brightness(.58); }
+.uploadReady .uploadContent strong,.uploadReady .uploadContent > span:not(.scanIcon),.uploadReady .scanIndex,.uploadReady .scanCorner { color: var(--paper-high); }
+.uploadReady .uploadAction { color: var(--ink); background: var(--acid); }
+.uploadReady .uploadAction span { color: var(--ink); }
+.uploadContent { position: relative; z-index: 1; display: flex; align-items: center; flex-direction: column; padding: 24px; }
+.uploadContent strong { display: block; margin-top: 16px; font-size: clamp(25px, 3vw, 36px); line-height: .98; letter-spacing: -.065em; }
 .uploadContent span { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.scanIndex,.scanCorner { position: absolute; z-index: 2; color: var(--ink); font: 700 10px/1 var(--font-geist-mono),monospace; letter-spacing: .12em; }
+.scanIndex { top: 20px; left: 20px; }.scanIndex span { color: var(--blue); }
+.scanCorner { right: 18px; bottom: 18px; color: rgba(16,16,20,.56); }
+.scanIcon { display: grid !important; width: 54px; height: 54px; place-items: center; margin: 0 !important; color: var(--ink) !important; background: var(--acid); border: 1px solid var(--ink); box-shadow: 4px 4px 0 var(--blue); transform: rotate(-4deg); }
+.uploadContent .uploadAction { display: flex; align-items: center; gap: 10px; margin-top: 22px; padding: 11px 15px; color: var(--paper-high); background: var(--ink); font: 700 10px/1 var(--font-geist-mono),monospace; letter-spacing: .08em; }
+.uploadAction span { margin: 0; color: var(--acid); font-size: 16px; }
 .scanResults { min-height: 350px; max-height: 540px; overflow: auto; }
+.scanWelcome { position: relative; display: flex; min-height: 300px; align-items: center; gap: clamp(20px, 4vw, 48px); overflow: hidden; padding: clamp(22px, 4vw, 42px); }
+.scanWelcome::after { content: ""; position: absolute; right: -90px; bottom: -150px; width: 270px; height: 270px; border: 1px solid rgba(49,85,231,.22); border-radius: 50%; box-shadow: 0 0 0 20px rgba(49,85,231,.035), 0 0 0 42px rgba(49,85,231,.025); }
+.scanWelcomeMark { position: relative; z-index: 1; display: grid; width: 74px; height: 74px; flex: none; place-items: center; color: var(--paper-high); background: var(--blue); border: 1px solid var(--ink); box-shadow: 5px 5px 0 var(--acid); transform: rotate(4deg); }
+.scanWelcomeMark span { position: absolute; top: -9px; right: -11px; display: grid; width: 25px; height: 25px; place-items: center; color: var(--ink); background: var(--acid); border: 1px solid var(--ink); font: 700 9px var(--font-geist-mono),monospace; }
+.scanWelcome > div:last-of-type { position: relative; z-index: 1; }
+.scanWelcome .eyebrow { margin-bottom: 13px; }
+.scanWelcome strong { display: block; font-size: clamp(27px, 3.5vw, 40px); line-height: .96; letter-spacing: -.065em; }
+.scanWelcome p:last-child { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+.scanWelcomeFoot { position: absolute; right: 26px; bottom: 22px; z-index: 1; color: var(--muted); font: 700 9px var(--font-geist-mono),monospace; letter-spacing: .12em; }
+.scanWelcomeFoot span { padding: 0 5px; color: var(--blue); }
 .scanRow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(16,16,20,.1); cursor: pointer; }
 .scanRow img { width: 48px; height: 48px; object-fit: cover; }
 .scanRow div { min-width: 0; flex: 1; }
