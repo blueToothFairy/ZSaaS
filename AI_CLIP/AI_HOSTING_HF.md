@@ -1,145 +1,48 @@
-# 🚀 Hướng Dẫn Deploy AI Model (FastAPI + ONNX) Lên Hugging Face Spaces Miễn Phí
+# Deploy the AI Service to Hugging Face Spaces
 
-Hugging Face Spaces cung cấp gói miễn phí cực mạnh (16GB RAM, 2 vCPU), rất phù hợp để host các model AI nặng như CLIP (ONNX) mà các dịch vụ như Vercel hay Render không thể gánh nổi.
+The AI service is a Docker Space. Keep the Space metadata at the top of `AI_CLIP/README.md`, and keep the container listening on port `7860`.
 
-## 📋 Bước 1: Chuẩn Bị Các File Cấu Hình (Trong thư mục `AI_CLIP`)
+## Required Runtime Files
 
-Đảm bảo trong thư mục `AI_CLIP` của bạn có đầy đủ 3 file cấu hình sau (nằm cùng cấp với file `main.py` hoặc `app.py`):
+The Docker build includes the package and the following runtime assets:
 
-### 1. `Dockerfile` (Không có đuôi mở rộng)
+- `app/`
+- `assets/models/clip_vision_512.onnx`
+- `assets/catalog/vibe_embeddings.npy`
+- `assets/catalog/vibe_keywords.npy`
+- `assets/clip_processor/`
+- `requirements.txt`
 
-Hugging Face bắt buộc ứng dụng Docker phải chạy ở cổng **7860**.
+Alternative ONNX variants and development notebooks are excluded from the container image.
 
-```dockerfile
-FROM python:3.10-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-# Lưu ý: Thay 'main:app' bằng tên file python của bạn nếu nó khác 'main.py'
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+## Local Container Check
 
-```
-
-### 2. `requirements.txt`
-
-Khai báo các thư viện cần thiết. (`python-multipart` là bắt buộc để FastAPI nhận được file ảnh gửi lên).
-
-```text
-fastapi
-uvicorn
-python-multipart
-Pillow
-numpy
-onnxruntime
-transformers
-```
-
-### 3. `README.md`
-
-Hugging Face dùng file này để nhận diện môi trường (Docker). Bắt buộc phải có đoạn cấu hình kẹp giữa 2 dòng `---`.
-
-```markdown
----
-title: VibeTune AI
-emoji: 🎵
-colorFrom: purple
-colorTo: pink
-sdk: docker
-pinned: false
----
-
-# VibeTune AI Backend
-API xử lý model CLIP cho ứng dụng VibeTune.
-
-```
-
----
-
-## 🔑 Bước 2: Lấy Access Token Của Hugging Face
-
-Vì Hugging Face không cho phép dùng mật khẩu tài khoản để push code, bạn cần tạo Token:
-
-1. Đăng nhập vào [Hugging Face](https://huggingface.co/).
-2. Vào **Settings -> Access Tokens** (hoặc truy cập `https://huggingface.co/settings/tokens`).
-3. Bấm **Create new token**.
-4. Đặt tên (VD: `Deploy`), phần **Role BẮT BUỘC chọn Write**.
-5. Bấm Create và **Copy Token** này lại (Nó sẽ dùng làm mật khẩu ở Bước 4).
-
----
-
-## 🐘 Bước 3: Khởi Tạo Git & Git LFS (Quản lý file nặng)
-
-Các file Model AI (`.onnx`) thường nặng hàng trăm MB, vượt quá giới hạn Git thông thường. Bạn phải dùng Git LFS.
-
-Mở Terminal (trỏ vào đúng thư mục `AI_CLIP`), chạy lần lượt các lệnh sau:
+From `AI_CLIP/`, build and start the image:
 
 ```bash
-# Xóa lịch sử git cũ (nếu có bị lỗi từ trước)
-rm -rf .git  # Hoặc xóa thư mục .git bằng tay (bật hiện file ẩn)
-
-# Khởi tạo Git mới
-git init
-
-# Cài đặt và theo dõi các file Model bằng Git LFS
-git lfs install
-git lfs track "*.onnx"
-git lfs track "*.npy"
-
-# Lưu file cấu hình LFS vừa tạo
-git add .gitattributes
-
+docker build -t vibetune-ai .
+docker run --rm -p 7860:7860 vibetune-ai
 ```
 
----
+Check `http://localhost:7860/ping` for `{"status":"ok"}` and `http://localhost:7860/docs` for the API schema. Model initialization happens before the container reports itself ready.
 
-## ☁️ Bước 4: Đẩy Code Lên Hugging Face
+## Publish the Space
 
-Sau khi cấu hình LFS xong, chúng ta đóng gói toàn bộ và đẩy lên Space.
+1. Create or open a Hugging Face Space configured with the **Docker** SDK.
+2. Clone the Space repository and copy `README.md`, `Dockerfile`, `requirements.txt`, `app/`, `assets/catalog/`, `assets/clip_processor/`, and `assets/models/clip_vision_512.onnx` into its repository root. The Docker image does not need the alternative models, tests, notebook, or scripts.
+3. Configure Git LFS for ONNX assets if the Space repository does not already track them:
 
-```bash
-# Gom tất cả code và model
-git add .
-git commit -m "Deploy AI Model with LFS"
+   ```bash
+   git lfs install
+   git lfs track "*.onnx"
+   git add .gitattributes
+   ```
 
-# Thay thế link dưới đây bằng link Space của bạn
-# Cú pháp: https://huggingface.co/spaces/<username>/<tên-space>
+4. Commit and push the service files and required model assets to the Space repository. Do not remove an existing `.git` directory or overwrite unrelated repository history.
+5. Wait for the Docker build to complete, then check the Space logs and `https://<space-host>/ping`.
 
-```
+No runtime Hugging Face token is required: the processor files are packaged locally and the image runs in offline mode. If deployment settings are overridden, configure `MODEL_PATH`, `TEXT_EMB_PATH`, `KEYWORDS_PATH`, and `CLIP_PROCESSOR_PATH` to valid container paths.
 
-**Lưu ý khi Terminal hỏi thông tin đăng nhập:**
+## Connect the Backend
 
-* **Username:** Điền username của bạn
-* **Password:** Dán cái **Access Token** lấy ở Bước 2 vào (KHÔNG dùng mật khẩu đăng nhập web).
-
-Chờ thanh tiến trình Upload LFS chạy đến 100%.
-
----
-
-## 🎯 Bước 5: Kiểm Tra & Tích Hợp Vào Backend Node.js
-
-1. Lên trang web Hugging Face, vào Space của bạn. Chờ trạng thái chuyển từ **Building** sang **Running** (Màu xanh lá).
-2. Nếu giao diện hiện `{"detail": "Not Found"}`, **đừng lo lắng!** Điều này có nghĩa là API đã chạy thành công 100%. Lý do nó báo "Not Found" là vì con AI chỉ có endpoint để nhận ảnh (ví dụ `/analyze`), không có trang chủ (`/`).
-3. Copy link Space của bạn.
-
-**Tại Backend (Node.js/Express) của bạn:**
-Thêm link vừa copy vào file `.env`:
-
-```env
-AI_API_URL=
-
-```
-
-Trong file Controller gọi AI, sử dụng biến môi trường này:
-
-```javascript
-// Ví dụ với Axios
-const response = await axios.post(`${process.env.AI_API_URL}/analyze`, formData, {
-  headers: {
-    ...formData.getHeaders()
-  }
-});
-
-```
-
-🎉 **XONG! Bạn đã có một API xử lý AI hoàn toàn miễn phí, độc lập, không sợ bị sập vì hết RAM.**
+Set the backend `AI_SERVICE_URL` to the Space base URL. The backend should send image uploads to `POST /extract-vibes` using the multipart field `file`. The endpoint returns a `top_keywords` array containing keyword strings and similarity scores.

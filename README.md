@@ -5,12 +5,12 @@
 🎵 **AI Soundtrack Finder for Content Creators**
 
 [![Node.js Version](https://img.shields.io/badge/Node.js-≥18.0.0-green?logo=node.js)](https://nodejs.org/)
-[![Python Version](https://img.shields.io/badge/Python-≥3.9-blue?logo=python)](https://www.python.org/)
+[![Python Version](https://img.shields.io/badge/Python-3.10-blue?logo=python)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-3178c6?logo=typescript)](https://www.typescriptlang.org/)
 ![Status](https://img.shields.io/badge/Status-Active%20Development-blue)
 ![Last Updated](https://img.shields.io/badge/Last%20Updated-February%202026-orange)
 
-[Live Demo](https://vibetune-app-flame.vercel.app/home)
+[Live Demo](https://vibetune-app-flame.vercel.app/)
 
 </div>
 
@@ -63,6 +63,7 @@ VibeTune leads with the creator's intent and combines it with visual understandi
   <img src="./imgs/screenshot1.png" alt="screen1" width="660" />
   <img src="./imgs/screenshot2.png" alt="screen2" width="660" />
   <img src="./imgs/screenshot3.png" alt="screen3" width="660" />
+  <img src="./imgs/screenshot4.png" alt="screen4" width="660" />
 </p>
 
 ---
@@ -134,13 +135,13 @@ The following capabilities are part of the product roadmap and are not yet part 
 
 | Component | Technology | Version |
 |-----------|-----------|---------|
-| **Framework** | FastAPI | Latest |
-| **Server** | Uvicorn | Latest |
+| **Framework** | FastAPI | 0.115.12 |
+| **Server** | Uvicorn | 0.34.0 |
 | **Vision Model** | OpenAI CLIP (ONNX) | vit-base-patch32 |
-| **ML Runtime** | ONNX Runtime | Latest |
-| **Image Processing** | Pillow | Latest |
-| **Numerical** | NumPy | Latest |
-| **Preprocessing** | Transformers (HuggingFace) | Latest |
+| **ML Runtime** | ONNX Runtime | 1.21.0 |
+| **Image Processing** | Pillow | 11.1.0 |
+| **Numerical** | NumPy | 1.26.4 |
+| **Preprocessing** | Transformers (HuggingFace) | 4.49.0 |
 
 ### Infrastructure & Deployment
 
@@ -169,7 +170,7 @@ The following capabilities are part of the product roadmap and are not yet part 
 |------|---------|---------|
 | **Node.js** | ≥18.0.0 | Backend & Frontend runtime |
 | **npm** or **yarn** | ≥8.0.0 | Package management |
-| **Python** | ≥3.9 | AI/ML service |
+| **Python** | 3.10 | AI/ML service |
 | **PostgreSQL** | ≥12 | Database |
 | **Docker** | ≥20.10 | (Optional) Container support |
 | **Git** | Latest | Version control |
@@ -289,9 +290,12 @@ NEXT_PUBLIC_GOOGLE_AI_KEY=your_google_ai_key
 **AI Service** – `AI_CLIP/.env` (if needed)
 
 ```env
-MODEL_PATH=clip_vision_512.onnx
-TEXT_EMB_PATH=vibe_embeddings.npy
-KEYWORDS_PATH=vibe_keywords.npy
+MODEL_PATH=assets/models/clip_vision_512.onnx
+TEXT_EMB_PATH=assets/catalog/vibe_embeddings.npy
+KEYWORDS_PATH=assets/catalog/vibe_keywords.npy
+CLIP_PROCESSOR_PATH=assets/clip_processor
+MAX_UPLOAD_BYTES=10485760
+MAX_IMAGE_PIXELS=25000000
 LOG_LEVEL=INFO
 ```
 
@@ -333,7 +337,7 @@ npm run dev
 ```bash
 cd AI_CLIP
 source venv/bin/activate  # or venv\Scripts\activate on Windows
-python -m uvicorn main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8000
 # Starts on http://localhost:8000
 ```
 
@@ -389,7 +393,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: http://localhost:3000/api/auth/google/callback
       FRONTEND_URL: http://localhost:3000
-      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_URL: http://ai-service:7860
     depends_on:
       postgres:
         condition: service_healthy
@@ -401,14 +405,15 @@ services:
       context: ./AI_CLIP
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8000:7860"
     environment:
       LOG_LEVEL: INFO
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 180s
 
   frontend:
     build:
@@ -462,7 +467,7 @@ docker run -p 5000:5000 \
 ```bash
 cd AI_CLIP
 docker build -t vibetune-ai .
-docker run -p 8000:8000 vibetune-ai
+docker run -p 8000:7860 vibetune-ai
 ```
 
 ---
@@ -511,9 +516,12 @@ docker run -p 8000:8000 vibetune-ai
 
 | Variable | Type | Required | Default | Example | Description |
 |----------|------|----------|---------|---------|-------------|
-| `MODEL_PATH` | string | No | clip_vision_512.onnx | (as shown) | Path to CLIP ONNX model |
-| `TEXT_EMB_PATH` | string | No | vibe_embeddings.npy | (as shown) | Path to text embeddings cache |
-| `KEYWORDS_PATH` | string | No | vibe_keywords.npy | (as shown) | Path to mood keyword mappings |
+| `MODEL_PATH` | string | No | assets/models/clip_vision_512.onnx | (as shown) | Path to CLIP ONNX model |
+| `TEXT_EMB_PATH` | string | No | assets/catalog/vibe_embeddings.npy | (as shown) | Path to text embeddings |
+| `KEYWORDS_PATH` | string | No | assets/catalog/vibe_keywords.npy | (as shown) | Path to vibe keyword labels |
+| `CLIP_PROCESSOR_PATH` | string | No | assets/clip_processor | (as shown) | Local CLIP preprocessing/tokenizer files |
+| `MAX_UPLOAD_BYTES` | integer | No | 10485760 | (as shown) | Maximum image upload size in bytes |
+| `MAX_IMAGE_PIXELS` | integer | No | 25000000 | (as shown) | Maximum image width multiplied by height |
 | `LOG_LEVEL` | string | No | INFO | DEBUG, INFO, WARNING | Logging verbosity |
 
 ---
@@ -669,7 +677,7 @@ export default class VibeScannerService {
 
 #### Example 3: AI Image Analysis (Python)
 
-**File: `AI_CLIP/main.py` (pseudo-code)**
+**File: `AI_CLIP/app/api/routes.py` (simplified example)**
 
 ```python
 from fastapi import FastAPI, UploadFile, File
@@ -1129,23 +1137,21 @@ vibetune/
 │               └── AuthenticatedRequest.ts  # Extended request with internal user ID
 │
 ├── AI_CLIP/                         # 🤖 AI/ML Service (Python + FastAPI)
-│   ├── package.json                 # (Python equivalent: requirements.txt)
-│   ├── requirements.txt              # Python dependencies
-│   ├── Dockerfile                   # Container build for Python
-│   │
-│   ├── main.py                      # FastAPI app (extract-vibes endpoint)
-│   ├── pipeline.ipynb               # Jupyter notebook (dev/experimentation)
-│   ├── flow.txt                     # Pipeline flow documentation
-│   │
-│   ├── clip_vision_512.onnx         # CLIP vision model (ONNX format)
-│   ├── clip_vision_quant.onnx       # Quantized CLIP model (lightweight)
-│   ├── clip_vision.onnx             # Full CLIP vision model
-│   │
-│   ├── vibe_embeddings.npy          # Pre-computed mood embeddings (N×512)
-│   ├── vibe_keywords.npy            # Mood keyword labels (N,)
-│   │
-│   ├── README.md                    # AI service documentation
-│   └── __pycache__/                 # Python bytecode (ignored by git)
+│   ├── app/
+│   │   ├── main.py                  # FastAPI app factory and lifespan
+│   │   ├── api/routes.py            # Health and image-analysis endpoints
+│   │   ├── core/                    # Settings and logging
+│   │   └── services/clip.py         # ONNX model and inference logic
+│   ├── assets/
+│   │   ├── models/                  # ONNX model variants
+│   │   ├── catalog/                 # Embeddings and keyword labels
+│   │   └── clip_processor/          # Local processor files
+│   ├── scripts/                     # Offline pipeline notes and experiments
+│   ├── tests/                       # Unit and API tests
+│   ├── requirements.txt             # Pinned runtime dependencies
+│   ├── requirements-dev.txt         # Test dependencies
+│   ├── Dockerfile                   # Hugging Face Spaces image (port 7860)
+│   └── README.md                    # AI setup and deployment documentation
 ```
 
 ### Directory Purpose Guide

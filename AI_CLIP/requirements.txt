@@ -1,7 +1,8 @@
-fastapi
-uvicorn
-python-multipart
-Pillow
-numpy
-onnxruntime
-transformers
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+Pillow==11.1.0
+numpy==1.26.4
+onnxruntime==1.21.0
+transformers==4.49.0
+pydantic-settings==2.8.1
