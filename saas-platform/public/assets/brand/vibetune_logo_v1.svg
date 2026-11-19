@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 310" width="100%" height="100%" aria-label="VibeTune Logo Mark">
+  <defs>
+    <!-- Hình khối lõi liên tục của nốt nhạc + đuôi cờ sóng + sóng âm -->
+    <path id="vt-core" d="
+      M 166 48
+      L 192 54
+      C 202 74, 218 114, 240 114
+      C 258 114, 266 100, 282 103
+      C 295 106, 304 113, 316 104
+      C 309 121, 294 130, 279 125
+      C 264 120, 254 136, 234 133
+      C 214 130, 198 116, 186 114
+      L 174 184
+      L 196 154
+      L 212 186
+      L 229 162
+      L 246 190
+      L 264 174
+      C 274 178, 284 177, 294 179
+      C 298 180, 298 187, 292 188
+      C 282 189, 273 187, 264 186
+      L 245 206
+      L 228 180
+      L 211 204
+      L 194 176
+      L 170 214
+      C 164 252, 134 274, 104 268
+      C 74 262, 58 232, 66 198
+      C 72 174, 92 166, 104 176
+      C 114 185, 114 214, 126 216
+      C 138 218, 142 192, 146 168
+      Z
+    " />
+
+    <!-- Clip giới hạn các mảng sáng & chấm bi nằm gọn bên trong viền đen -->
+    <clipPath id="vt-clip">
+      <use href="#vt-core" />
+    </clipPath>
+
+    <!-- Họa tiết chấm Halftone bên trong đuôi cờ -->
+    <pattern id="vt-dots" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(22)">
+      <circle cx="3" cy="3" r="1.45" fill="#101014" />
+    </pattern>
+  </defs>
+
+  <!-- 1. LỚP BÓNG LỆCH XANH ACID (Lệch trên - trái) -->
+  <use href="#vt-core" transform="translate(-6, 2)" fill="#d4ff00" stroke="#d4ff00" stroke-width="22" stroke-linejoin="round" stroke-linecap="round" />
+
+  <!-- 2. LỚP BÓNG LỆCH XANH COBALT (Lệch dưới - phải) -->
+  <use href="#vt-core" transform="translate(6, 7)" fill="#3155e7" stroke="#3155e7" stroke-width="22" stroke-linejoin="round" stroke-linecap="round" />
+
+  <!-- 3. VIỀN MỰC ĐEN CHÍNH (#101014) -->
+  <use href="#vt-core" fill="#101014" stroke="#101014" stroke-width="20" stroke-linejoin="round" stroke-linecap="round" />
+
+  <!-- 4. LỚP NỀN CAM CHỦ ĐẠO (#ff6539) -->
+  <use href="#vt-core" fill="#ff6539" />
+
+  <!-- 5. CÁC MẢNG NHẤN VÀNG ACID, CHẤM HALFTONE & GẠCH MỰC BÊN TRONG -->
+  <g clip-path="url(#vt-clip)">
+    <!-- Viền sáng vàng Acid chạy dọc thân trái và lòng chữ U -->
+    <path d="M 171 46 L 150 172 C 145 202, 138 224, 124 222 C 110 220, 110 186, 98 178 C 86 170, 70 182, 68 206 C 65 234, 80 262, 108 268" fill="none" stroke="#d4ff00" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Dải sáng vàng Acid chạy dọc mép trên đuôi cờ -->
+    <path d="M 188 52 C 200 74, 217 116, 240 116 C 258 116, 267 102, 283 105 C 296 108, 305 114, 317 105" fill="none" stroke="#d4ff00" stroke-width="8" stroke-linecap="round" />
+
+    <!-- Nửa trên của dải sóng âm zigzag màu vàng Acid -->
+    <path d="M 172 184 L 196 154 L 212 186 L 229 162 L 246 190 L 264 174 L 296 180" fill="none" stroke="#d4ff00" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Mảng chấm Halftone nửa sau đuôi cờ -->
+    <path d="M 207 72 L 322 96 L 315 142 L 202 128 Z" fill="url(#vt-dots)" />
+
+    <!-- 4 nét gạch mực dọc ở cổ đuôi cờ -->
+    <g stroke="#101014" stroke-width="3.2" stroke-linecap="round">
+      <line x1="192" y1="62" x2="186" y2="96" />
+      <line x1="199" y1="68" x2="193" y2="104" />
+      <line x1="206" y1="76" x2="200" y2="112" />
+      <line x1="213" y1="84" x2="208" y2="117" />
+    </g>
+  </g>
+
+  <!-- 6. CHI TIẾT TRANG TRÍ XUNG QUANH -->
+  <!-- Ngôi sao 8 cánh (✳) bên trái thân nốt -->
+  <g transform="translate(115, 125)" stroke="#101014" stroke-width="3.2" stroke-linecap="round">
+    <line x1="0" y1="-12" x2="0" y2="12" />
+    <line x1="-12" y1="0" x2="12" y2="0" />
+    <line x1="-8.5" y1="-8.5" x2="8.5" y2="8.5" />
+    <line x1="-8.5" y1="8.5" x2="8.5" y2="-8.5" />
+  </g>
+
+  <!-- 2 nét gạch chuyển động bên trái thân trên -->
+  <g fill="none" stroke="#101014" stroke-linecap="round">
+    <path d="M 141 58 Q 137 80 134 102" stroke-width="3.5" />
+    <path d="M 148 66 Q 145 86 142 106" stroke-width="2.8" />
+  </g>
+
+  <!-- 2 nét cong rung động bên ngoài bầu trái -->
+  <g fill="none" stroke="#101014" stroke-linecap="round">
+    <path d="M 52 206 C 50 182, 64 163, 83 157" stroke-width="3.2" />
+    <path d="M 60 203 C 59 186, 69 171, 84 166" stroke-width="2.5" />
+  </g>
+
+  <!-- 2 nét cong rung động dưới đáy phải -->
+  <g fill="none" stroke="#101014" stroke-linecap="round">
+    <path d="M 164 283 C 175 274, 183 262, 187 248" stroke-width="3.2" />
+    <path d="M 173 285 C 182 277, 189 267, 193 255" stroke-width="2.5" />
+  </g>
+
+  <!-- Cụm 3 tia sét phía trên đuôi cờ -->
+  <g fill="#101014">
+    <!-- Tia sét trái -->
+    <path d="M 225 76 L 216 61 L 223 62 L 218 47 L 231 64 L 224 64 Z" />
+    <!-- Tia sét giữa (lớn) -->
+    <path d="M 236 83 L 243 60 L 235 59 L 256 35 L 248 61 L 256 62 L 235 86 Z" />
+    <!-- Tia sét phải -->
+    <path d="M 248 88 L 263 73 L 257 70 L 276 57 L 263 76 L 269 79 L 248 90 Z" />
+    <!-- Tia sét nhỏ phía trên sóng âm dưới -->
+    <path d="M 250 163 L 265 150 L 264 157 L 282 149 L 266 164 L 267 158 Z" />
+  </g>
+</svg>

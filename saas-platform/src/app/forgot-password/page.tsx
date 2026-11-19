@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
   };
 
   return <main className={styles.page}>
-    <header className={styles.header}><Link href="/landing-page" className={styles.brand}><Image src="/assets/brand/vibetune_logo.png" alt="" width={34} height={34} /><span>VibeTune</span></Link><span className={styles.headerMark}>Sound culture / Issue 06</span></header>
+    <header className={styles.header}><Link href="/landing-page" className={styles.brand}><Image src="/assets/brand/vibetune_logo_v1.png" alt="" width={34} height={34} /><span>VibeTune</span></Link><span className={styles.headerMark}>Sound culture / Issue 06</span></header>
     <div className={styles.layout}><section className={styles.panel} aria-labelledby="forgot-title">
       <Link href="/sign-in" className={styles.back}><ArrowLeft size={15} /> Back to sign in</Link>
       <p className={styles.eyebrow}>Account recovery</p><h1 className={styles.title} id="forgot-title">Reset your password.</h1>

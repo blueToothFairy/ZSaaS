@@ -18,11 +18,11 @@ export const metadata: Metadata = {
   description: "VibeTune harmonizes your environment with AI-driven weather music.",
   icons: {
     icon: [
-      { url: "/assets/brand/vibetune_logo.png", type: "image/png", sizes: "any" },
-      { url: "/assets/brand/vibetune_logo.png", type: "image/png", sizes: "192x192" },
+      { url: "/assets/brand/vibetune_logo_v1.png", type: "image/png", sizes: "any" },
+      { url: "/assets/brand/vibetune_logo_v1.png", type: "image/png", sizes: "192x192" },
     ],
-    shortcut: "/assets/brand/vibetune_logo.png",
-    apple: "/assets/brand/vibetune_logo.png",
+    shortcut: "/assets/brand/vibetune_logo_v1.png",
+    apple: "/assets/brand/vibetune_logo_v1.png",
   },
 };
 
@@ -34,8 +34,8 @@ export default function RootLayout({
   return (
     <html lang="en">
         <head>
-          <link rel="icon" href="/assets/brand/vibetune_logo.png" sizes="any" />
-          <link rel="apple-touch-icon" href="/assets/brand/vibetune_logo.png" />
+          <link rel="icon" href="/assets/brand/vibetune_logo_v1.png" sizes="any" />
+          <link rel="apple-touch-icon" href="/assets/brand/vibetune_logo_v1.png" />
         </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}

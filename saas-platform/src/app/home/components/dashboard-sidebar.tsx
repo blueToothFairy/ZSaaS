@@ -28,7 +28,7 @@ export function DashboardSidebar({ activeTab, displayName, email, isOpen, onNavi
       {isOpen && <button aria-label="Close navigation" className={styles.mobileBackdrop} onClick={onClose} />}
       <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`} aria-label="Dashboard sidebar">
         <a href="/home" className={styles.brand} aria-label="VibeTune home">
-          <Image src="/assets/brand/vibetune_logo.png" alt="" width={34} height={34} />
+          <Image src="/assets/brand/vibetune_logo_v1.png" alt="" width={34} height={34} />
           <span>VibeTune</span>
         </a>
         <nav className={styles.nav} aria-label="Main navigation">

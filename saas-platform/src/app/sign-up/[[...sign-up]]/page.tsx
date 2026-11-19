@@ -36,7 +36,7 @@ export default function SignUpPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link href="/landing-page" className={styles.brand}><Image src="/assets/brand/vibetune_logo.png" alt="" width={34} height={34} /><span>VibeTune</span></Link>
+        <Link href="/landing-page" className={styles.brand}><Image src="/assets/brand/vibetune_logo_v1.png" alt="" width={34} height={34} /><span>VibeTune</span></Link>
         <span className={styles.headerMark}>Sound culture / Issue 06</span>
       </header>
       <div className={styles.layout}>

@@ -20,7 +20,7 @@ export default function LandingPageVibeTune() {
     <main className={styles.page}>
       <header className={styles.header}>
         <Link href="/landing-page" className={styles.brand} aria-label="VibeTune home">
-          <Image src="/assets/brand/vibetune_logo.png" alt="" width={38} height={38} />
+          <Image src="/assets/brand/vibetune_logo_v1.png" alt="" width={38} height={38} />
           <span>VibeTune</span>
         </Link>
         <span className={styles.edition}>Sound culture / Issue no. 06</span>
