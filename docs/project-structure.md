@@ -12,16 +12,24 @@ ZSaaS/
 ├── REVIEW.md                    # Comprehensive system architecture review (Feb 2026)
 │
 ├── AI_CLIP/                     # Python AI Vision Service
-│   ├── main.py                  # FastAPI app with CLIP model
-│   ├── requirements.txt          # Python dependencies (FastAPI, CLIP, ONNX)
-│   ├── Dockerfile               # Containerize for Hugging Face Spaces deployment
-│   ├── flow.txt                 # Documentation of CLIP extraction flow
-│   ├── pipeline.ipynb           # Jupyter notebook for development/experimentation
-│   ├── README.md                # AI-specific setup & model details
-│   ├── *.onnx                   # Pre-trained CLIP vision model (ONNX format)
-│   ├── vibe_embeddings.npy      # Pre-computed text embeddings for keyword matching
-│   ├── vibe_keywords.npy        # Keyword list for similarity search
-│   └── BACKEND_HOSTING_RENDER.md # (misplaced; should be in backend/)
+│   ├── app/
+│   │   ├── main.py              # FastAPI app factory and lifespan
+│   │   ├── api/routes.py        # Health and image-analysis endpoints
+│   │   ├── core/                # Environment settings and logging
+│   │   └── services/clip.py     # ONNX model loading and inference
+│   ├── assets/
+│   │   ├── models/              # ONNX model variants
+│   │   ├── catalog/             # Embeddings and keyword labels
+│   │   └── clip_processor/      # Local preprocessing/tokenizer files
+│   ├── scripts/                 # Offline pipeline notes and experiments
+│   │   ├── flow.txt              # CLIP extraction flow notes
+│   │   └── pipeline.ipynb        # Model/export and catalog experiments
+│   ├── tests/                   # Unit and API tests
+│   ├── requirements.txt         # Pinned runtime dependencies
+│   ├── requirements-dev.txt     # Test dependencies
+│   ├── Dockerfile               # Hugging Face Spaces image (port 7860)
+│   ├── AI_HOSTING_HF.md         # Hugging Face deployment steps
+│   └── README.md                # AI service setup and deployment guide
 │
 ├── backend/                     # Express.js + TypeScript REST API
 │   ├── package.json             # Backend dependencies (Express, Knex, Clerk, etc.)
@@ -186,9 +194,10 @@ profile/
 ### AI_CLIP/
 **Purpose**: Independent Python service for AI-powered image analysis via CLIP model.
 
-- **main.py**: FastAPI server with POST `/extract-vibes` endpoint
-- **Models**.onnx: Pre-trained CLIP vision encoder (quantized versions available)
-- **Data files**: Pre-computed embeddings for fast similarity matching
+- **app/main.py**: FastAPI app factory; loads service resources through lifespan
+- **app/api/routes.py**: `GET /ping` and `POST /extract-vibes` endpoints
+- **app/services/clip.py**: ONNX session, catalog validation, and ranking
+- **assets/**: Deployable model, embeddings, keyword labels, and local processor
 - **Deployment**: Containerized and deployed to Hugging Face Spaces or cloud VM
 
 **Why Separate?**

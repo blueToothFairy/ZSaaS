@@ -1,0 +1,13 @@
+.git
+.env
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+tests
+scripts
+clip_processor
+.cache
+*.ipynb
+assets/models/clip_vision.onnx
+assets/models/clip_vision_quant.onnx
