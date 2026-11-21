@@ -80,7 +80,7 @@ The existing recommendation query generation, iTunes search behavior, cache, fil
 
 - Replace `ai_outputs` with `recommendation_jobs` as the canonical Vibe Scan job table (`feature_type = 'match_music'`). Inspect the deployed schema and constraints before writing the migration.
 - Extend the existing AI output DTO, repository interface, and Knex repository with job lookup and update operations. Add an explicit `queued` status and the lifecycle fields required below.
-- The current `Multer.memoryStorage()` upload is temporary only. Production processing uses Cloudflare R2 private object storage accessible by both API and worker. Implement this behind a storage interface; use a local adapter only for development/tests.
+- The current `Multer.memoryStorage()` upload is temporary only. Production processing uses Cloudflare R2 private object storage accessible by both API and worker. Implement this behind a storage interface; use a local adapter only for development/tests. Retain terminal-job uploads for 30 days by default, configurable with `VIBE_SCAN_UPLOAD_RETENTION_DAYS`.
 - The existing Redis client is designed for optional caching and graceful degradation. BullMQ must use dedicated Redis connections and must not reuse that cache client instance.
 - Continue using Upstash for Redis. Confirm the selected plan supports BullMQ's command/connection requirements and expected background command volume.
 - The worker re-loads the user's Music Taste Profile when processing begins. Recommendation output therefore uses the profile available at processing time.
@@ -142,7 +142,7 @@ Frontend
 
 **Create `recommendation_jobs`**
 
-Use `recommendation_jobs` as the single source of truth for job lifecycle and result history. Define the required lifecycle fields:
+Use `recommendation_jobs` as the single source of truth for job lifecycle and result history. The SQL migration renames `ai_outputs` when it exists; if neither table exists, it creates the baseline table with `feature_type` stored as text. Define the required lifecycle fields:
 
 - `updated_at` — last state change.
 - `stage` — current stage, such as `queued`, `analyzing_image`, `searching_tracks`, or `ranking`.
@@ -206,7 +206,7 @@ No public endpoint should expose BullMQ internals, Redis keys, stack traces, or 
 - `backend/src/modules/vibe-scan/vibe.controller.ts`
   - Submit jobs and return `202`; add owner-scoped status handling.
 - `backend/src/modules/vibe-scan/vibe.module.ts`
-  - Share the application dependencies/use cases between the API and worker composition roots.
+  - Compose repositories and application services, then inject the Vibe Scan application service into the controller.
 - `backend/src/modules/vibe-scan/services/index.ts`
   - Keep recommendation orchestration reusable by the worker; expose stage/checkpoint boundaries without changing recommendation rules.
 - `backend/src/modules/vibe-scan/dto/ai-repo.ts`
@@ -222,7 +222,7 @@ No public endpoint should expose BullMQ internals, Redis keys, stack traces, or 
 
 **New**
 
-- Knex migration for the `recommendation_jobs` lifecycle fields and `outbox_events` table, placed in the repository's established migration location.
+- Manual SQL migration for the `recommendation_jobs` lifecycle fields and `outbox_events` table, placed in `backend/migrations/` according to the repository's existing SQL migration convention.
 - `backend/src/modules/vibe-scan/services/vibe-scan-submission.service.ts` — image storage plus atomic job/outbox creation.
 - `backend/src/shared/outbox/outbox.repository.ts` — event creation, claiming, lease recovery, and publication updates.
 - `backend/src/shared/outbox/outbox-dispatcher.ts` — publish pending events to BullMQ with bounded retry.
@@ -259,17 +259,17 @@ No public endpoint should expose BullMQ internals, Redis keys, stack traces, or 
 
 ### 9) Open Questions
 
-- Use Cloudflare R2 for private object storage in Cloudflare R2. The worker must be able to read private uploads independently of the API process; define the retention policy.
-- Inspect the deployed `recommendation_jobs` DDL before writing the migration, and add a CHECK constraint allowing only `queued`, `processing`, `completed`, and `failed`.
-- Continue using Upstash for BullMQ; verify the selected plan supports its connection and command requirements.
+- Cloudflare R2 is selected for private object storage. The worker reads private uploads independently of the API process; terminal uploads are retained for 30 days by default.
+- The migration is based on the repository's `mig-001-init.sql`. Verify the deployed `recommendation_jobs` DDL and status constraints before applying it; the migration enforces `queued`, `processing`, `completed`, and `failed`.
+- Continue using Upstash for BullMQ. Verify that the selected plan supports BullMQ's connection and command requirements before production rollout.
 
 ### 10) References
 
 - `backend/src/modules/vibe-scan/vibe.route.ts` — authenticated upload route and Multer memory storage.
-- `backend/src/modules/vibe-scan/vibe.controller.ts` — synchronous request handling.
+- `backend/src/modules/vibe-scan/vibe.controller.ts` — asynchronous submission and owner-scoped status handling.
 - `backend/src/modules/vibe-scan/services/index.ts` — Music Taste → CLIP → query generation → song retrieval → ranking orchestration.
-- `backend/src/modules/vibe-scan/dto/ai-repo.ts` — current AI output statuses and data model.
-- `backend/src/modules/vibe-scan/interfaces/ai-output-repo.interface.ts` and `repositories/ai-outputs.knex.ts` — current persistence interface and implementation.
+- `backend/src/modules/vibe-scan/dto/ai-repo.ts` — recommendation job statuses and data model.
+- `backend/src/modules/vibe-scan/interfaces/ai-output-repo.interface.ts` and `repositories/ai-outputs.knex.ts` — job persistence interface and implementation.
 - `backend/src/modules/song/services/itunes.search.service.ts` — keyword retrieval and existing Redis cache.
 - `backend/src/shared/redis/redisClient.ts` and `backend/src/shared/cache/cacheService.ts` — existing cache Redis connection and behavior.
 - `backend/src/server.ts` — current API startup.

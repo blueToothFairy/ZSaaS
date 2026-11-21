@@ -8,6 +8,7 @@ import RankingService from "./ranking.service.js";
 import { mapVisualContext } from "./music-taxonomy.js";
 import { resolveMusicGenre } from "../../../shared/music/music-taxonomy.js";
 import ITunesSearchService from "../../song/services/itunes.search.service.js";
+import { RetryableVibeScanError } from "../vibe-scan.errors.js";
 
 const preference = (type: MusicPreference["type"], value: string, sentiment: MusicPreference["sentiment"] = "preferred", extra: Partial<MusicPreference> = {}): MusicPreference => ({
   id: `${type}-${value}`, type, sentiment, value, normalizedValue: value.toLowerCase(), displayName: value, metadata: {}, hardExclude: false, ...extra,
@@ -132,6 +133,14 @@ describe("iTunes candidate retrieval", () => {
     assert.equal(results.length, 1);
     assert.equal(results[0]?.track.id, "survivor");
     assert.ok(results[0]?.provenance.some((entry) => entry.query === "working query"));
+  });
+  it("fails retryably when every catalog request fails", async () => {
+    const service = new ITunesSearchService();
+    (service as unknown as { fetchSongsForQuery: () => Promise<never> }).fetchSongsForQuery = async () => { throw new Error("provider unavailable"); };
+    await assert.rejects(
+      service.searchCandidates([{ query: "only query", groups: ["context"] }], "US", 1),
+      RetryableVibeScanError
+    );
   });
   it("bounds concurrent provider calls and merges provenance for duplicate tracks", async () => {
     const service = new ITunesSearchService();

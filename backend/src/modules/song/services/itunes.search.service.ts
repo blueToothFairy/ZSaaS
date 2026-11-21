@@ -1,6 +1,7 @@
 import ISongSearch, { Song, SearchResult, SearchResultWithCandidates, RecommendationQuery, RetrievedCandidate } from "../interfaces/song-search.interface.js";
 import axios from "axios";
 import { cacheService } from "../../../shared/cache/cacheService.js";
+import { PermanentVibeScanError, RetryableVibeScanError } from '../../vibe-scan/vibe-scan.errors.js';
 
 interface ITunesResult {
   trackName: string;
@@ -96,6 +97,9 @@ export default class ITunesSearchService implements ISongSearch {
     }
     const uniqueQueries = [...queryMap.values()].slice(0, maxQueriesPerCountry);
     const result = new Map<string, RetrievedCandidate>();
+    let successfulSearches = 0;
+    let retryableFailures = 0;
+    let permanentFailure: PermanentVibeScanError | undefined;
     let cursor = 0;
 
     const worker = async () => {
@@ -105,6 +109,7 @@ export default class ITunesSearchService implements ISongSearch {
         for (const searchCountry of this.buildCountrySearchOrder(normalizedCountry)) {
           try {
             const songs = await this.fetchSongsForQuery(current.query, this.maxSongsPerQuery, searchCountry);
+            successfulSearches += 1;
             for (const song of songs) {
               const key = song.id || `${song.artist.toLocaleLowerCase("en-US")}|${song.title.toLocaleLowerCase("en-US")}`;
               const candidate = result.get(key) ?? { track: song, provenance: [] };
@@ -114,13 +119,20 @@ export default class ITunesSearchService implements ISongSearch {
               result.set(key, candidate);
             }
           } catch (error) {
-            console.error(`Skipping recommendation query "${current.query}" for ${searchCountry}:`, axios.isAxiosError(error) ? error.message : error);
+            if (axios.isAxiosError(error) && error.response && error.response.status !== 429 && error.response.status < 500) {
+              permanentFailure ??= new PermanentVibeScanError('MUSIC_SEARCH_REJECTED', 'The music search provider rejected a query');
+              continue;
+            }
+            retryableFailures += 1;
+            console.warn('Music search query failed', { country: searchCountry, errorName: error instanceof Error ? error.name : 'UnknownError' });
           }
         }
       }
     };
 
     await Promise.all(Array.from({ length: Math.min(safeConcurrency, uniqueQueries.length) }, () => worker()));
+    if (successfulSearches === 0 && retryableFailures > 0) throw new RetryableVibeScanError('Music search provider is temporarily unavailable');
+    if (successfulSearches === 0 && permanentFailure) throw permanentFailure;
     return [...result.values()];
   }
 

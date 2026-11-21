@@ -1,5 +1,6 @@
 import IAIVibeScanner, { Vibe } from "../interfaces/ai-scanner.interface.js";
 import axios, { AxiosError } from "axios";
+import { PermanentVibeScanError, RetryableVibeScanError } from '../vibe-scan.errors.js';
 
 export default class CLIPService implements IAIVibeScanner {
   async extractVibes(data: FormData): Promise<Vibe[]> {
@@ -25,15 +26,13 @@ export default class CLIPService implements IAIVibeScanner {
         const axiosError = error as AxiosError;
 
         if (axiosError.response) {
-          throw new Error(
-            `AI service error: ${axiosError.response.status} - ${
-              axiosError.response.data || axiosError.message
-            }`
-          );
+          const status = axiosError.response.status;
+          if (status === 408 || status === 429 || status >= 500) throw new RetryableVibeScanError(`AI service temporarily unavailable (${status})`);
+          throw new PermanentVibeScanError('INVALID_IMAGE', 'The image could not be analyzed');
         } else if (axiosError.request) {
-          throw new Error("AI service did not respond. Please try again.");
+          throw new RetryableVibeScanError("AI service did not respond");
         } else {
-          throw new Error(`Request failed: ${axiosError.message}`);
+          throw new PermanentVibeScanError('AI_REQUEST_INVALID', 'AI service request could not be created');
         }
       }
 
