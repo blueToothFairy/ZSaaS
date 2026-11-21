@@ -46,6 +46,19 @@ function getWeatherIcon(weather: WeatherData | null) {
   return hour >= 6 && hour < 18 ? Sun : Moon;
 }
 
+function getVibeScanStageLabel(stage?: string, status?: string): string {
+  switch (stage ?? status) {
+    case 'queued': return 'Waiting to start';
+    case 'processing': return 'Working on your soundtrack';
+    case 'analyzing_image': return 'Understanding your image';
+    case 'searching_tracks': return 'Finding music that fits';
+    case 'ranking': return 'Picking your best matches';
+    case 'completed': return 'Your soundtrack is ready';
+    case 'failed': return 'The scan could not be completed';
+    default: return 'Finding your soundtrack';
+  }
+}
+
 export default function AppDashboard() {
   const { requestWithAuth, user, isLoaded, logout, addPassword, linkGoogle } = useAppAuth();
   const router = useRouter();
@@ -61,7 +74,7 @@ export default function AppDashboard() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [scanResults, setScanResults] = useState<Song[] | null>(null);
-  const [scanProgress, setScanProgress] = useState(0);
+  const [scanStage, setScanStage] = useState('Getting your scan ready');
   const [apiError, setApiError] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [authSettingsMessage, setAuthSettingsMessage] = useState('');
@@ -239,7 +252,7 @@ export default function AppDashboard() {
     setUploadedImage(null);
     setScanResults(null);
     setIsAnalyzing(true);
-    setScanProgress(0);
+    setScanStage('Getting your scan ready');
     try {
       const preview = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -249,15 +262,16 @@ export default function AppDashboard() {
       });
       setUploadedImage(preview);
       const compressedFile = await compressImage(file, 500);
-      const progressTimer = window.setInterval(() => setScanProgress((value) => value >= 90 ? 90 : value + 3), 40);
-      try {
-        const formData = new FormData();
-        formData.append('file', compressedFile);
-        const response = await requestWithAuth((token) => axios.post<{ songs?: Song[] }>('/api/vibe-scan', formData, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }));
-        setScanResults(response.data.songs ?? []);
-        setScanProgress(100);
-      } finally {
-        window.clearInterval(progressTimer);
+      const formData = new FormData();
+      formData.append('file', compressedFile);
+      const accepted = await requestWithAuth((token) => axios.post<{ jobId: string }>('/api/vibe-scan', formData, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}`, 'Idempotency-Key': crypto.randomUUID() } }));
+      for (let attempt = 0; attempt < 180; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        const response = await requestWithAuth((token) => axios.get<{ status: string; stage?: string; songs?: Song[]; error?: { message?: string } }>(`/api/vibe-scan/jobs/${accepted.data.jobId}`, { headers: { Authorization: `Bearer ${token}` } }));
+        setScanStage(getVibeScanStageLabel(response.data.stage, response.data.status));
+        if (response.data.status === 'completed') { setScanResults(response.data.songs ?? []); break; }
+        if (response.data.status === 'failed') throw new Error(response.data.error?.message ?? 'Failed to analyze image');
+        if (attempt === 179) throw new Error('Analysis is taking longer than expected. Please try again later.');
       }
     } catch (error) {
       setApiError(error instanceof Error ? error.message : 'Failed to analyze image');
@@ -269,7 +283,7 @@ export default function AppDashboard() {
     }
   };
 
-  const resetScan = () => { setUploadedImage(null); setScanResults(null); setApiError(null); setScanProgress(0); };
+  const resetScan = () => { setUploadedImage(null); setScanResults(null); setApiError(null); setScanStage('Getting your scan ready'); };
   const greeting = (() => {
     const hour = clockTime?.getHours() ?? new Date().getHours();
     if (hour >= 5 && hour < 12) return 'Good morning';
@@ -293,7 +307,7 @@ export default function AppDashboard() {
         <main className={styles.main}>
           <div className={styles.mobileBar}><button type="button" className={styles.mobileMenu} aria-label="Open navigation" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}>☰</button><span className={styles.mobileBrand}>VibeTune</span></div>
           {activeTab === 'home' && <HomeTab displayName={displayName} greeting={greeting} songs={curatedSongs} weather={weatherData} session={session} clockTime={clockTime} weatherIcon={WeatherIcon} isLoading={isCuratedLoading} favoriteIds={favoritedSongIds} onNavigateScan={() => setActiveTab('ai-scan')} onPlay={playTrack} onToggleFavorite={handleToggleFavorite} />}
-          {activeTab === 'ai-scan' && <VibeScanTab uploadedImage={uploadedImage} isAnalyzing={isAnalyzing} progress={scanProgress} results={scanResults} error={apiError} favoriteIds={favoritedSongIds} onImageUpload={handleImageUpload} onReset={resetScan} onPlay={playTrack} onToggleFavorite={handleToggleFavorite} />}
+          {activeTab === 'ai-scan' && <VibeScanTab uploadedImage={uploadedImage} isAnalyzing={isAnalyzing} stage={scanStage} results={scanResults} error={apiError} favoriteIds={favoritedSongIds} onImageUpload={handleImageUpload} onReset={resetScan} onPlay={playTrack} onToggleFavorite={handleToggleFavorite} />}
           {activeTab === 'favorites' && <FavoritesTab favorites={favorites} isLoading={isFavoritesLoading} onPlay={playTrack} onRemove={handleToggleFavorite} />}
           {activeTab === 'profile' && <ProfileTab displayName={displayName} email={displayEmail || 'Your VibeTune account'} favoriteCount={favorites.length} authMethods={user?.authMethods} linkGoogle={linkGoogle} addPassword={addPassword} newPassword={newPassword} setNewPassword={setNewPassword} message={authSettingsMessage} setMessage={setAuthSettingsMessage} />}
         </main>

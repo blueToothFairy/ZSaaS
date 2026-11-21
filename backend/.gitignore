@@ -2,6 +2,7 @@
 *.onnx
 
 dist/
+/.local-vibe-uploads/
 /.evaluation-dist/
 
 # Dependencies

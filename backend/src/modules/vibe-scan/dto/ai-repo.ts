@@ -9,7 +9,7 @@ export type AIFeatureType =
   | 'match_music';
 
 // Định nghĩa cho Status
-export type AIOutputStatus = 'processing' | 'completed' | 'failed';
+export type AIOutputStatus = 'queued' | 'processing' | 'completed' | 'failed';
 
 export type JSONB = Record<string, any>;
 
@@ -21,6 +21,11 @@ export interface AIOutputDTO {
   output_data: JSONB;          
   status: AIOutputStatus;      
   created_at: Date;            
+  updated_at: Date;
+  idempotency_key?: string | null;
+  stage?: string | null;
+  error_code?: string | null;
+  error_message?: string | null;
 }
 
 export interface CreateAIOutputDTO {
@@ -30,10 +35,14 @@ export interface CreateAIOutputDTO {
   input_params?: JSONB; 
   output_data?: JSONB;
   status?: AIOutputStatus; 
+  idempotency_key?: string | null;
 }
 
 export interface UpdateAIOutputDTO {
   input_params?: JSONB;
   output_data?: JSONB;
   status?: AIOutputStatus;
+  stage?: string | null;
+  error_code?: string | null;
+  error_message?: string | null;
 }

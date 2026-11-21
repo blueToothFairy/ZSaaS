@@ -1,30 +1,18 @@
 import VibeScannerController from "./vibe.controller.js";
-import VibeScannerService from "./services/index.js";
-import CLIPService from "./services/CLIP.service.js";
-import ITunesSearchService from "../song/services/itunes.search.service.js";
 import KnexAIOutputsRepository from "./repositories/ai-outputs.knex.js"
-import IAIVibeScanner from "./interfaces/ai-scanner.interface.js";
-import ISongSearch from "../song/interfaces/song-search.interface.js";
 import AIRepository from "./interfaces/ai-output-repo.interface.js";
 import db from '../../shared/db/knexClient.js';
 import MusicTasteRepository from '../profile/repositories/music-taste.knex.js';
 import MusicTasteService from '../profile/services/music-taste.service.js';
+import { createObjectStorage } from '../../shared/storage/object-storage.js';
+import OutboxRepository from '../../shared/outbox/outbox.repository.js';
+import VibeScanSubmissionService from './services/vibe-scan-submission.service.js';
+import VibeScanApplicationService from './services/vibe-scan-application.service.js';
 
-// CLIP URL may not be available in all environments (e.g. tests or local dev).
-// We don't want the entire backend to crash on import; requests that rely on
-// CLIP will simply fail later with a descriptive message.
-// const clipUrl = process.env.CLIP_URL || '';
-// if (!clipUrl) {
-//   console.warn('CLIP_URL is not set; vibe-scanning endpoints will return errors until configured.');
-// }
-
-const clipService: IAIVibeScanner = new CLIPService();
-const iTunesSearchService: ISongSearch = new ITunesSearchService();
 const aiRepo: AIRepository = new KnexAIOutputsRepository(db);
 const musicTasteService = new MusicTasteService(new MusicTasteRepository(db));
-
-const vibeScannerService = new VibeScannerService(clipService, iTunesSearchService, aiRepo, musicTasteService);
-
-const vibeController = new VibeScannerController(vibeScannerService);
+const submissionService = new VibeScanSubmissionService(db, aiRepo, new OutboxRepository(db), createObjectStorage());
+const vibeScanService = new VibeScanApplicationService(aiRepo, musicTasteService, submissionService);
+const vibeController = new VibeScannerController(vibeScanService);
 
 export default vibeController;
